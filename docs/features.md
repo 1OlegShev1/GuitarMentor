@@ -123,14 +123,22 @@ The Guitar Tuner uses the device's microphone to detect the pitch of played note
    - Visual indication of detected note
    - Frequency display in Hertz
 
-2. **Precision Tuning Guidance**
+2. **Multiple Tuning Options**
+   - Standard (EADGBE)
+   - Drop D (DADGBE)
+   - Half Step Down (Eb Ab Db Gb Bb Eb)
+   - Open G (DGDGBD)
+   - DADGAD
+   - Easy selection through dropdown menu
+
+3. **Precision Tuning Guidance**
    - Visual cents-based tuning indicator with 21 segments
    - Range display of ±50 cents from perfect pitch
    - Color-coded feedback (green for in-tune, red for sharp, blue for flat)
    - Exact cents deviation measurement display (-50¢ to +50¢)
    - Clear text instructions with precise cents adjustment values
 
-3. **Standard Tuning Reference**
+4. **Standard Tuning Reference**
    - Reference display for all six guitar strings
    - Highlights the closest string to the detected pitch
    - Shows standard frequencies for each string
@@ -142,21 +150,26 @@ The Guitar Tuner uses the device's microphone to detect the pitch of played note
    - Grant microphone permissions when prompted
    - The button turns red when the tuner is active
 
-2. **Reading the Tuning Indicator:**
+2. **Selecting a Tuning:**
+   - Choose your desired tuning from the dropdown menu before starting the tuner
+   - The tuning selection is disabled while the tuner is active
+   - The reference notes at the bottom will update to show the selected tuning
+
+3. **Reading the Tuning Indicator:**
    - The center of the indicator represents perfect tuning (0¢)
    - Segments to the right indicate the note is sharp (positive cents)
    - Segments to the left indicate the note is flat (negative cents)
    - The active segment shows exactly how far from in-tune your string is
    - The numerical cents value shows the precise deviation
 
-3. **Tuning a String:**
+4. **Tuning a String:**
    - Pluck one string at a time
    - Observe the cents indicator and follow the instruction text
    - Adjust the tuning peg until the indicator centers in the green zone (±5¢)
    - The display shows "Perfect!" when your string is properly tuned
 
-4. **Reference Guide:**
-   - The bottom of the tuner shows all six strings in standard tuning
+5. **Reference Guide:**
+   - The bottom of the tuner shows all six strings in the selected tuning
    - The current string being tuned is highlighted
    - Use the reference frequencies for precise tuning
 
@@ -386,7 +399,22 @@ Several key data structures power the application:
 
 5. **Guitar String Tunings**
    ```typescript
-   const GUITAR_STRINGS = [
+   // Guitar string with note name and frequency
+   type GuitarString = { name: string; frequency: number };
+   
+   // Available tuning names
+   type TuningName = 'Standard' | 'Drop D' | 'Half Step Down' | 'Open G' | 'DADGAD';
+   
+   // A complete guitar tuning (array of 6 strings)
+   type Tuning = GuitarString[];
+   
+   // Map of all available tunings
+   type TuningMap = {
+     [key in TuningName]: Tuning;
+   };
+   
+   // Example tuning definition
+   const STANDARD_TUNING: Tuning = [
      { name: 'E2', frequency: 82.41 },
      { name: 'A2', frequency: 110.00 },
      { name: 'D3', frequency: 146.83 },
