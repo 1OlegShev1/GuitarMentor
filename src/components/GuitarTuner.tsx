@@ -234,9 +234,8 @@ const GuitarTuner: React.FC = () => {
   const renderCentsTuningIndicator = () => {
     if (!tuningStatus || !detectedFrequency) return null;
     
-    // Create a cents-based display with 20 segments (-50 cents to +50 cents)
+    // Create a cents-based display with segments (-50 cents to +50 cents)
     const segments = 21; // 10 segments on each side + center
-    const segmentWidth = 100 / segments;
     
     // Clamp cents difference to displayable range (±50 cents)
     const clampedCents = Math.min(Math.max(tuningStatus.centsDiff, -50), 50);
@@ -246,61 +245,103 @@ const GuitarTuner: React.FC = () => {
     const activeSegment = centerSegment + Math.round(clampedCents / 5);
     
     return (
-      <div className="mt-6">
-        <div className="flex justify-between text-xs mb-1">
+      <div className="mt-8 w-full px-0">
+        <div className="flex justify-between text-base mb-2 w-full">
           <span>-50¢</span>
-          <span>In Tune</span>
+          <span>-10¢</span>
+          <span className="font-semibold">0¢</span>
+          <span>+10¢</span>
           <span>+50¢</span>
         </div>
-        <div className="relative h-8 bg-gray-200 dark:bg-secondary-700 rounded-full overflow-hidden flex">
+        <div className="relative h-14 bg-gray-200 dark:bg-secondary-700 rounded-full overflow-hidden flex w-full">
           {/* Generate all segments */}
           {Array.from({ length: segments }).map((_, index) => {
             // Determine segment color and style
             let bgColor = "bg-gray-300 dark:bg-gray-600";
-            let width = `${segmentWidth}%`;
+            
+            // Calculate width based on distance from center (non-linear distribution)
+            // Center segments get more width to emphasize precision area
+            const distanceFromCenter = Math.abs(index - centerSegment);
+            let widthPercent;
+            
+            if (distanceFromCenter === 0) {
+              // Center segment
+              widthPercent = 8;
+            } else if (distanceFromCenter === 1) {
+              // Segments at ±5¢ (the in-tune threshold)
+              widthPercent = 7;
+            } else if (distanceFromCenter === 2) {
+              // Segments at ±10¢
+              widthPercent = 6;
+            } else if (distanceFromCenter <= 4) {
+              // Medium-close segments (±15-20¢)
+              widthPercent = 5;
+            } else if (distanceFromCenter <= 6) {
+              // Further segments
+              widthPercent = 3;
+            } else {
+              // Outer segments
+              widthPercent = 2;
+            }
             
             // Center segment is green
             if (index === centerSegment) {
-              bgColor = "bg-green-500";
-              width = `${segmentWidth * 1.5}%`; // Make center segment slightly wider
+              bgColor = "bg-green-500 dark:bg-green-600";
             }
-            // Near-center segments (±10 cents) are light green
-            else if (Math.abs(index - centerSegment) <= 2) {
-              bgColor = "bg-green-200 dark:bg-green-900";
+            // Near-center segments (±5 cents) are light green - this is the "in tune" range
+            else if (distanceFromCenter === 1) {
+              bgColor = "bg-green-300 dark:bg-green-700";
             }
+            // Segments at ±10 cents are very light green
+            else if (distanceFromCenter === 2) {
+              bgColor = "bg-green-100 dark:bg-green-900";
+            }
+            
             // Highlight the active segment
             if (index === activeSegment) {
               bgColor = tuningStatus.isInTune 
-                ? "bg-green-500" 
+                ? "bg-green-600" 
                 : tuningStatus.isTooHigh 
-                  ? "bg-red-500" 
-                  : "bg-blue-500";
+                  ? "bg-red-600" 
+                  : "bg-blue-600";
             }
             
             return (
               <div 
                 key={index}
-                className={`h-full ${bgColor} ${index === centerSegment ? 'border-l border-r border-gray-400 dark:border-gray-500' : ''}`}
+                className={`h-full ${bgColor} 
+                           ${index === activeSegment ? 'border border-white dark:border-black' : ''} 
+                           ${index === centerSegment ? 'border-t-2 border-b-2 border-green-700 dark:border-green-400' : ''}
+                           ${distanceFromCenter === 1 ? 'border-t border-b border-green-600' : ''}`}
                 style={{ 
-                  width,
+                  width: `${widthPercent}%`,
                   transition: 'background-color 0.2s ease'
                 }}
               />
             );
           })}
           
+          {/* Critical points markers */}
+          <div className="absolute top-0 w-full h-2">
+            <div className="absolute left-0 h-full w-px bg-gray-500 dark:bg-gray-400"></div>
+            <div className="absolute left-1/4 h-full w-px bg-gray-500 dark:bg-gray-400"></div>
+            <div className="absolute left-1/2 h-full w-px bg-gray-500 dark:bg-gray-400"></div>
+            <div className="absolute left-3/4 h-full w-px bg-gray-500 dark:bg-gray-400"></div>
+            <div className="absolute right-0 h-full w-px bg-gray-500 dark:bg-gray-400"></div>
+          </div>
+          
           {/* Cents value display */}
-          <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold">
+          <div className="absolute inset-0 flex items-center justify-center text-base font-bold">
             {tuningStatus.centsDiff.toFixed(1)}¢
           </div>
         </div>
         
-        <div className="mt-2 text-sm text-center">
+        <div className="mt-3 text-lg text-center font-medium w-full">
           {tuningStatus.isInTune 
-            ? "Perfect! Your string is in tune." 
+            ? "Perfect! Your string is in tune (±5¢)." 
             : tuningStatus.isTooHigh 
-              ? `Tune down by ${Math.abs(tuningStatus.centsDiff).toFixed(1)}¢` 
-              : `Tune up by ${Math.abs(tuningStatus.centsDiff).toFixed(1)}¢`}
+              ? `Tune down by ${Math.abs(tuningStatus.centsDiff).toFixed(1)}¢ (${Math.abs(Math.ceil(tuningStatus.centsDiff/5))} segments)` 
+              : `Tune up by ${Math.abs(tuningStatus.centsDiff).toFixed(1)}¢ (${Math.abs(Math.ceil(tuningStatus.centsDiff/5))} segments)`}
         </div>
       </div>
     );
@@ -332,31 +373,31 @@ const GuitarTuner: React.FC = () => {
         <div className="text-center">
           {isListening ? (
             <>
-              <h3 className="text-2xl font-bold">
+              <h3 className="text-4xl font-bold mb-2">
                 {detectedNote || "-"}
               </h3>
               {detectedFrequency && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
                   {detectedFrequency.toFixed(2)} Hz
                 </p>
               )}
               {renderCentsTuningIndicator()}
             </>
           ) : (
-            <p>Tap the microphone to start tuning</p>
+            <p className="text-lg">Tap the microphone to start tuning</p>
           )}
         </div>
       </div>
       
       <div className="mt-8">
-        <div className="mb-4">
-          <label htmlFor="tuning-select" className="block mb-2 font-medium">Select Tuning:</label>
+        <div className="mb-4 w-full">
+          <label htmlFor="tuning-select" className="block mb-2 font-medium text-lg">Select Tuning:</label>
           <select
             id="tuning-select"
             value={selectedTuning}
             onChange={(e) => setSelectedTuning(e.target.value as TuningName)}
             className="w-full p-2 border border-gray-300 dark:border-secondary-600 rounded 
-                     bg-white dark:bg-secondary-700 focus:ring-2 focus:ring-primary-500"
+                     bg-white dark:bg-secondary-700 focus:ring-2 focus:ring-primary-500 text-base"
             disabled={isListening}
           >
             {Object.keys(TUNINGS).map((tuning) => (
@@ -367,18 +408,18 @@ const GuitarTuner: React.FC = () => {
           </select>
         </div>
         
-        <h3 className="font-medium mb-3">{selectedTuning} Tuning:</h3>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+        <h3 className="font-medium mb-3 text-lg w-full">{selectedTuning} Tuning:</h3>
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-6 w-full">
           {TUNINGS[selectedTuning].map((string, index) => (
             <div 
               key={index} 
-              className={`text-center p-2 rounded ${
+              className={`text-center p-3 rounded ${
                 isListening && closestString.name === string.name 
-                  ? 'bg-primary-100 dark:bg-primary-900' 
+                  ? 'bg-primary-100 dark:bg-primary-900 border-2 border-primary-500' 
                   : 'bg-gray-100 dark:bg-secondary-700'
               }`}
             >
-              <div className="font-bold">{string.name}</div>
+              <div className="font-bold text-lg">{string.name}</div>
               <div className="text-xs text-gray-500 dark:text-gray-400">{string.frequency.toFixed(1)} Hz</div>
             </div>
           ))}
