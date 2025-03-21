@@ -16,6 +16,7 @@ const Navigation = () => {
     { name: 'CAGED System', path: '/caged' },
     { name: 'Chord Progressions', path: '/progressions' },
     { name: 'Jam Assistant', path: '/jam-assistant' },
+    { name: 'Tools', path: '/tools' },
   ];
   
   const toggleMobileMenu = () => {

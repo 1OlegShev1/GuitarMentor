@@ -43,6 +43,132 @@ The application supports both light and dark themes to accommodate different use
 - Implemented with a class-based dark mode approach in Tailwind CSS 4
 - CSS variables in `globals.css` handle consistent theming across components
 
+## Guitar Tools
+
+The Guitar Tools section provides essential practice tools for guitarists, including a metronome and a microphone-based guitar tuner.
+
+### Features:
+
+1. **Tabbed Interface**
+   - Easy navigation between different tools
+   - Clean, focused UI for each tool
+   - Smooth transitions between tools
+
+2. **Responsive Design**
+   - Works well on desktop and mobile devices
+   - Optimized controls for touch interfaces
+
+### Usage Instructions:
+
+1. **Accessing Tools:**
+   - Navigate to the Tools page from the main navigation
+   - Switch between tools using the tab navigation at the top
+
+**Technical implementation:**
+- Located in `src/app/tools/page.tsx`
+- Uses a tab-based interface for tool selection
+- Includes helpful tips for each tool
+- Smooth animation transitions between tools
+
+## Metronome
+
+The Metronome helps musicians maintain consistent timing and develop a stronger sense of rhythm.
+
+### Features:
+
+1. **Tempo Control**
+   - Adjustable tempo from 40-240 BPM
+   - Visual indication of the current tempo
+   - Increment/decrement controls for precise adjustments
+
+2. **Time Signature Selection**
+   - Support for common time signatures (2/4, 3/4, 4/4, 6/8)
+   - First-beat accent to emphasize the downbeat
+   - Visual indication of the current time signature
+
+3. **Volume Control**
+   - Adjustable volume slider
+   - Percentage display of current volume
+   - Different sounds for accented and regular beats
+
+### Usage Instructions:
+
+1. **Setting Tempo:**
+   - Use the + and - buttons to adjust the tempo in 5 BPM increments
+   - Start with a slower tempo and gradually increase as you build accuracy
+
+2. **Starting/Stopping:**
+   - Press the play/pause button to start or stop the metronome
+   - The button changes color to indicate the current state
+
+3. **Adjusting Settings:**
+   - Select time signature using the dropdown menu
+   - Adjust volume using the slider at the bottom
+
+**Technical implementation:**
+- Located in `src/components/Metronome.tsx`
+- Uses Tone.js for precise timing and audio synthesis
+- Features React state management for metronome settings
+- Implements useRef for managing audio resources
+- Cleanup on component unmount to prevent memory leaks
+
+## Guitar Tuner
+
+The Guitar Tuner uses the device's microphone to detect the pitch of played notes and helps users tune their guitar to standard tuning.
+
+### Features:
+
+1. **Real-time Pitch Detection**
+   - Microphone-based pitch detection
+   - Visual indication of detected note
+   - Frequency display in Hertz
+
+2. **Precision Tuning Guidance**
+   - Visual cents-based tuning indicator with 21 segments
+   - Range display of ±50 cents from perfect pitch
+   - Color-coded feedback (green for in-tune, red for sharp, blue for flat)
+   - Exact cents deviation measurement display (-50¢ to +50¢)
+   - Clear text instructions with precise cents adjustment values
+
+3. **Standard Tuning Reference**
+   - Reference display for all six guitar strings
+   - Highlights the closest string to the detected pitch
+   - Shows standard frequencies for each string
+
+### Usage Instructions:
+
+1. **Starting the Tuner:**
+   - Click the microphone button to activate the tuner
+   - Grant microphone permissions when prompted
+   - The button turns red when the tuner is active
+
+2. **Reading the Tuning Indicator:**
+   - The center of the indicator represents perfect tuning (0¢)
+   - Segments to the right indicate the note is sharp (positive cents)
+   - Segments to the left indicate the note is flat (negative cents)
+   - The active segment shows exactly how far from in-tune your string is
+   - The numerical cents value shows the precise deviation
+
+3. **Tuning a String:**
+   - Pluck one string at a time
+   - Observe the cents indicator and follow the instruction text
+   - Adjust the tuning peg until the indicator centers in the green zone (±5¢)
+   - The display shows "Perfect!" when your string is properly tuned
+
+4. **Reference Guide:**
+   - The bottom of the tuner shows all six strings in standard tuning
+   - The current string being tuned is highlighted
+   - Use the reference frequencies for precise tuning
+
+**Technical implementation:**
+- Located in `src/components/GuitarTuner.tsx`
+- Uses the Pitchy library for accurate pitch detection
+- Implements Web Audio API for microphone input processing
+- Converts frequency deviations to cents using the formula: 1200 * log2(frequency ratio)
+- Features a multi-segment visual display for precise tuning guidance
+- Handles browser permissions for microphone access
+- Includes cleanup of audio resources on component unmount
+
 ## Fretboard Navigator
 
 The Fretboard Navigator helps users learn and memorize the notes on the guitar fretboard through visualization and interactive exercises.
@@ -221,6 +347,8 @@ The application uses React's useState and useEffect hooks for state management. 
 - Selected notes, scales, or chords
 - Practice mode state
 - User interaction history
+- Audio state (metronome, tuner)
+- Device permissions (microphone access)
 
 ### Data Structures
 
@@ -254,4 +382,59 @@ Several key data structures power the application:
      },
      // other progressions
    };
-   ``` 
+   ```
+
+5. **Guitar String Tunings**
+   ```typescript
+   const GUITAR_STRINGS = [
+     { name: 'E2', frequency: 82.41 },
+     { name: 'A2', frequency: 110.00 },
+     { name: 'D3', frequency: 146.83 },
+     { name: 'G3', frequency: 196.00 },
+     { name: 'B3', frequency: 246.94 },
+     { name: 'E4', frequency: 329.63 }
+   ];
+   ```
+
+6. **Tuning Status Interface**
+   ```typescript
+   interface TuningStatus {
+     percentageDiff: number;
+     centsDiff: number;      // Deviation in cents (1/100th of a semitone)
+     isTooHigh: boolean;
+     isTooLow: boolean;
+     isInTune: boolean;
+   }
+   ```
+
+### Audio Processing
+
+The application uses several audio technologies:
+
+1. **Tone.js**
+   - Used in the Metronome component for precise timing
+   - Provides synthesized sounds for beats and accents
+   - Implements scheduling and timing control
+
+2. **Web Audio API**
+   - Core browser API used for audio processing
+   - Utilized for microphone access and input processing
+   - Powers real-time audio analysis in the tuner
+
+3. **Pitchy**
+   - Library for pitch detection in the guitar tuner
+   - Analyzes audio data to determine fundamental frequency
+   - Provides clarity measurement for accuracy
+
+### Third-Party Libraries
+
+The application leverages several libraries:
+
+- **Next.js 15**: React framework for server-side rendering and routing
+- **React 19**: UI component library
+- **TailwindCSS**: Utility-first CSS framework
+- **Tone.js**: Audio framework for timing and synthesis
+- **Pitchy**: Pitch detection library
+- **Tonal.js**: Music theory calculations and reference
+- **React-Icons**: Icon library for UI elements
+- **Next-themes**: Dark mode implementation 

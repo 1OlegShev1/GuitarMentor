@@ -72,4 +72,9 @@ const features = [
     description: 'Get suggestions for extending your chord progressions',
     href: '/jam-assistant',
   },
+  {
+    title: 'Guitar Tools',
+    description: 'Use the metronome and guitar tuner to practice with precision',
+    href: '/tools',
+  },
 ]; 
