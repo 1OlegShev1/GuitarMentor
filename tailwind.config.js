@@ -36,5 +36,9 @@ module.exports = {
       },
     },
   },
+  presets: [
+    require('@tailwindcss/typography'),
+    require('@tailwindcss/forms'),
+  ],
   plugins: [],
 } 
