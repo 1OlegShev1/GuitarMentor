@@ -5,7 +5,14 @@ import { PitchDetector } from 'pitchy';
 import { FaMicrophone, FaMicrophoneSlash } from 'react-icons/fa';
 
 // Standard tuning notes for guitar
-const GUITAR_STRINGS = [
+type GuitarString = { name: string; frequency: number };
+type TuningName = 'Standard' | 'Drop D' | 'Half Step Down' | 'Open G' | 'DADGAD';
+type Tuning = GuitarString[];
+type TuningMap = {
+  [key in TuningName]: Tuning;
+};
+
+const STANDARD_TUNING: Tuning = [
   { name: 'E2', frequency: 82.41 },
   { name: 'A2', frequency: 110.00 },
   { name: 'D3', frequency: 146.83 },
@@ -14,9 +21,58 @@ const GUITAR_STRINGS = [
   { name: 'E4', frequency: 329.63 }
 ];
 
+// Drop D tuning
+const DROP_D_TUNING: Tuning = [
+  { name: 'D2', frequency: 73.42 },
+  { name: 'A2', frequency: 110.00 },
+  { name: 'D3', frequency: 146.83 },
+  { name: 'G3', frequency: 196.00 },
+  { name: 'B3', frequency: 246.94 },
+  { name: 'E4', frequency: 329.63 }
+];
+
+// Half Step Down tuning (Eb Standard)
+const HALF_STEP_DOWN_TUNING: Tuning = [
+  { name: 'Eb2', frequency: 77.78 },
+  { name: 'Ab2', frequency: 103.83 },
+  { name: 'Db3', frequency: 138.59 },
+  { name: 'Gb3', frequency: 185.00 },
+  { name: 'Bb3', frequency: 233.08 },
+  { name: 'Eb4', frequency: 311.13 }
+];
+
+// Open G tuning
+const OPEN_G_TUNING: Tuning = [
+  { name: 'D2', frequency: 73.42 },
+  { name: 'G2', frequency: 98.00 },
+  { name: 'D3', frequency: 146.83 },
+  { name: 'G3', frequency: 196.00 },
+  { name: 'B3', frequency: 246.94 },
+  { name: 'D4', frequency: 293.66 }
+];
+
+// DADGAD tuning
+const DADGAD_TUNING: Tuning = [
+  { name: 'D2', frequency: 73.42 },
+  { name: 'A2', frequency: 110.00 },
+  { name: 'D3', frequency: 146.83 },
+  { name: 'G3', frequency: 196.00 },
+  { name: 'A3', frequency: 220.00 },
+  { name: 'D4', frequency: 293.66 }
+];
+
+// All available tunings
+const TUNINGS: TuningMap = {
+  'Standard': STANDARD_TUNING,
+  'Drop D': DROP_D_TUNING,
+  'Half Step Down': HALF_STEP_DOWN_TUNING,
+  'Open G': OPEN_G_TUNING,
+  'DADGAD': DADGAD_TUNING
+};
+
 // Helper function to find closest guitar string
-const findClosestString = (frequency: number) => {
-  return GUITAR_STRINGS.reduce((prev, curr) => {
+const findClosestString = (frequency: number, guitarStrings: Tuning): GuitarString => {
+  return guitarStrings.reduce((prev, curr) => {
     return (Math.abs(curr.frequency - frequency) < Math.abs(prev.frequency - frequency)) 
       ? curr 
       : prev;
@@ -41,7 +97,8 @@ const GuitarTuner: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const [detectedNote, setDetectedNote] = useState<string | null>(null);
   const [detectedFrequency, setDetectedFrequency] = useState<number | null>(null);
-  const [closestString, setClosestString] = useState(GUITAR_STRINGS[0]);
+  const [closestString, setClosestString] = useState(STANDARD_TUNING[0]);
+  const [selectedTuning, setSelectedTuning] = useState<TuningName>('Standard');
   const [tuningStatus, setTuningStatus] = useState<{
     percentageDiff: number;
     centsDiff: number;
@@ -156,8 +213,9 @@ const GuitarTuner: React.FC = () => {
     if (clarity > 0.8 && pitch > 60 && pitch < 1000) {
       setDetectedFrequency(pitch);
       
-      // Find closest guitar string
-      const closest = findClosestString(pitch);
+      // Find closest guitar string in the selected tuning
+      const currentTuning = TUNINGS[selectedTuning];
+      const closest = findClosestString(pitch, currentTuning);
       setClosestString(closest);
       
       // Calculate tuning accuracy
@@ -291,9 +349,27 @@ const GuitarTuner: React.FC = () => {
       </div>
       
       <div className="mt-8">
-        <h3 className="font-medium mb-3">Standard Tuning:</h3>
+        <div className="mb-4">
+          <label htmlFor="tuning-select" className="block mb-2 font-medium">Select Tuning:</label>
+          <select
+            id="tuning-select"
+            value={selectedTuning}
+            onChange={(e) => setSelectedTuning(e.target.value as TuningName)}
+            className="w-full p-2 border border-gray-300 dark:border-secondary-600 rounded 
+                     bg-white dark:bg-secondary-700 focus:ring-2 focus:ring-primary-500"
+            disabled={isListening}
+          >
+            {Object.keys(TUNINGS).map((tuning) => (
+              <option key={tuning} value={tuning}>
+                {tuning}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <h3 className="font-medium mb-3">{selectedTuning} Tuning:</h3>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-          {GUITAR_STRINGS.map((string, index) => (
+          {TUNINGS[selectedTuning].map((string, index) => (
             <div 
               key={index} 
               className={`text-center p-2 rounded ${
