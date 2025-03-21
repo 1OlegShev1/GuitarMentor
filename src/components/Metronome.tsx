@@ -50,6 +50,16 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
     }
   }, [tempo, timeSignature, isPlaying]);
 
+  // Update volume when tickVolume changes
+  useEffect(() => {
+    if (tickSoundRef.current) {
+      tickSoundRef.current.volume.value = Tone.gainToDb(tickVolume);
+    }
+    if (accentSoundRef.current) {
+      accentSoundRef.current.volume.value = Tone.gainToDb(tickVolume);
+    }
+  }, [tickVolume]);
+
   const startMetronome = async () => {
     // Make sure Tone.js is started (needed for browsers)
     await Tone.start();
@@ -64,9 +74,9 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
     metronomeRef.current = new Tone.Loop((time) => {
       // Play accent on first beat, regular tick on others
       if (count % timeSignature === 0) {
-        accentSoundRef.current.triggerAttackRelease('C5', '32n', time, tickVolume);
+        accentSoundRef.current.triggerAttackRelease('C5', '32n', time, 0.9);
       } else {
-        tickSoundRef.current.triggerAttackRelease('G4', '32n', time, tickVolume * 0.8);
+        tickSoundRef.current.triggerAttackRelease('G4', '32n', time, 0.7);
       }
       count++;
     }, `${60 / tempo}n`).start(0);
