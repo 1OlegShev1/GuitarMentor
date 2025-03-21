@@ -248,71 +248,46 @@ const GuitarTuner: React.FC = () => {
       <div className="mt-8 w-full px-0">
         <div className="flex justify-between text-base mb-2 w-full">
           <span>-50¢</span>
-          <span>-10¢</span>
+          <span>-5¢</span>
           <span className="font-semibold">0¢</span>
-          <span>+10¢</span>
+          <span>+5¢</span>
           <span>+50¢</span>
         </div>
         <div className="relative h-14 bg-gray-200 dark:bg-secondary-700 rounded-full overflow-hidden flex w-full">
-          {/* Generate all segments */}
+          {/* Generate all segments with equal width */}
           {Array.from({ length: segments }).map((_, index) => {
             // Determine segment color and style
             let bgColor = "bg-gray-300 dark:bg-gray-600";
+            const widthPercent = 100 / segments; // Equal width for all segments
             
-            // Calculate width based on distance from center (non-linear distribution)
-            // Center segments get more width to emphasize precision area
+            // Calculate distance from center for coloring purposes
             const distanceFromCenter = Math.abs(index - centerSegment);
-            let widthPercent;
             
-            if (distanceFromCenter === 0) {
-              // Center segment
-              widthPercent = 8;
-            } else if (distanceFromCenter === 1) {
-              // Segments at ±5¢ (the in-tune threshold)
-              widthPercent = 7;
-            } else if (distanceFromCenter === 2) {
-              // Segments at ±10¢
-              widthPercent = 6;
-            } else if (distanceFromCenter <= 4) {
-              // Medium-close segments (±15-20¢)
-              widthPercent = 5;
-            } else if (distanceFromCenter <= 6) {
-              // Further segments
-              widthPercent = 3;
-            } else {
-              // Outer segments
-              widthPercent = 2;
-            }
-            
-            // Center segment is green
+            // Apply colors based on tuning precision
             if (index === centerSegment) {
-              bgColor = "bg-green-500 dark:bg-green-600";
+              // Center segment (0¢)
+              bgColor = "bg-green-600 dark:bg-green-600";
             }
-            // Near-center segments (±5 cents) are light green - this is the "in tune" range
             else if (distanceFromCenter === 1) {
-              bgColor = "bg-green-300 dark:bg-green-700";
-            }
-            // Segments at ±10 cents are very light green
-            else if (distanceFromCenter === 2) {
-              bgColor = "bg-green-100 dark:bg-green-900";
+              // Segments at ±5¢ (the in-tune threshold)
+              bgColor = "bg-green-400 dark:bg-green-700";
             }
             
-            // Highlight the active segment
+            // Highlight the active segment with a clear border
             if (index === activeSegment) {
-              bgColor = tuningStatus.isInTune 
+              const baseColor = distanceFromCenter <= 1 
                 ? "bg-green-600" 
                 : tuningStatus.isTooHigh 
                   ? "bg-red-600" 
                   : "bg-blue-600";
+              
+              bgColor = baseColor;
             }
             
             return (
               <div 
                 key={index}
-                className={`h-full ${bgColor} 
-                           ${index === activeSegment ? 'border border-white dark:border-black' : ''} 
-                           ${index === centerSegment ? 'border-t-2 border-b-2 border-green-700 dark:border-green-400' : ''}
-                           ${distanceFromCenter === 1 ? 'border-t border-b border-green-600' : ''}`}
+                className={`h-full ${bgColor} ${index === activeSegment ? 'border-2 border-white dark:border-black' : ''}`}
                 style={{ 
                   width: `${widthPercent}%`,
                   transition: 'background-color 0.2s ease'
@@ -321,27 +296,42 @@ const GuitarTuner: React.FC = () => {
             );
           })}
           
-          {/* Critical points markers */}
+          {/* Critical tuning threshold markers */}
           <div className="absolute top-0 w-full h-2">
-            <div className="absolute left-0 h-full w-px bg-gray-500 dark:bg-gray-400"></div>
-            <div className="absolute left-1/4 h-full w-px bg-gray-500 dark:bg-gray-400"></div>
-            <div className="absolute left-1/2 h-full w-px bg-gray-500 dark:bg-gray-400"></div>
-            <div className="absolute left-3/4 h-full w-px bg-gray-500 dark:bg-gray-400"></div>
-            <div className="absolute right-0 h-full w-px bg-gray-500 dark:bg-gray-400"></div>
+            {/* Critical range: -3¢ */}
+            <div className="absolute left-[42.9%] h-full w-0.5 bg-black dark:bg-white opacity-30"></div>
+            {/* -5¢ mark - exactly 1 segment left of center */}
+            <div className="absolute left-[45.2%] h-full w-0.5 bg-black dark:bg-white opacity-50"></div>
+            {/* -2¢ critical precision */}
+            <div className="absolute left-[47.6%] h-full w-0.5 bg-green-700 dark:bg-green-400 opacity-70"></div>
+            {/* 0¢ mark - exactly at center */}
+            <div className="absolute left-[50%] h-full w-1 bg-green-700 dark:bg-green-400 opacity-90 transform -translate-x-1/2"></div>
+            {/* +2¢ critical precision */}
+            <div className="absolute left-[52.4%] h-full w-0.5 bg-green-700 dark:bg-green-400 opacity-70"></div>
+            {/* +5¢ mark - exactly 1 segment right of center */}
+            <div className="absolute left-[54.8%] h-full w-0.5 bg-black dark:bg-white opacity-50"></div>
+            {/* Critical range: +3¢ */}
+            <div className="absolute left-[57.1%] h-full w-0.5 bg-black dark:bg-white opacity-30"></div>
           </div>
           
           {/* Cents value display */}
-          <div className="absolute inset-0 flex items-center justify-center text-base font-bold">
-            {tuningStatus.centsDiff.toFixed(1)}¢
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-base font-bold px-3 py-1 bg-white dark:bg-gray-800 bg-opacity-60 dark:bg-opacity-60 rounded-full">
+              {tuningStatus.centsDiff.toFixed(1)}¢
+            </span>
           </div>
         </div>
         
         <div className="mt-3 text-lg text-center font-medium w-full">
-          {tuningStatus.isInTune 
-            ? "Perfect! Your string is in tune (±5¢)." 
-            : tuningStatus.isTooHigh 
-              ? `Tune down by ${Math.abs(tuningStatus.centsDiff).toFixed(1)}¢ (${Math.abs(Math.ceil(tuningStatus.centsDiff/5))} segments)` 
-              : `Tune up by ${Math.abs(tuningStatus.centsDiff).toFixed(1)}¢ (${Math.abs(Math.ceil(tuningStatus.centsDiff/5))} segments)`}
+          {Math.abs(tuningStatus.centsDiff) <= 2
+            ? "Perfect! Your string is in perfect tune (±2¢)."
+            : Math.abs(tuningStatus.centsDiff) <= 3
+              ? "Very good! Your string is in critical range (±3¢)."
+              : Math.abs(tuningStatus.centsDiff) <= 5
+                ? "Good! Your string is in acceptable range (±5¢)."
+                : tuningStatus.isTooHigh 
+                  ? `Tune down by ${Math.abs(tuningStatus.centsDiff).toFixed(1)}¢` 
+                  : `Tune up by ${Math.abs(tuningStatus.centsDiff).toFixed(1)}¢`}
         </div>
       </div>
     );
