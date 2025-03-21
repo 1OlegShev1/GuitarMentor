@@ -1,0 +1,256 @@
+# Guitar Mentor Features Documentation
+
+This document provides detailed information about each feature in the Guitar Mentor application, including usage instructions and technical implementation details.
+
+## Navigation
+
+The application includes a persistent navigation bar that allows users to move between different sections of the app. The navigation is responsive and adapts to different screen sizes.
+
+**Technical implementation:**
+- Located in `src/components/Navigation.tsx`
+- Uses Next.js `Link` component for client-side navigation
+- Highlights the current page based on the current path
+- Provides a mobile-friendly version with a hamburger menu
+- Includes a theme toggle for switching between light and dark modes
+
+## Theme Toggle
+
+The application supports both light and dark themes to accommodate different user preferences and reduce eye strain in low-light environments.
+
+### Features:
+
+1. **Theme Switching**
+   - Toggle between light and dark modes with a single click
+   - System preference detection automatically applies your preferred theme
+   - Persists theme choice between visits using local storage
+
+2. **Visual Adaptation**
+   - All UI components smoothly transition between themes
+   - Careful color selection ensures proper contrast in both modes
+   - Icons change to match the current theme
+
+### Usage Instructions:
+
+1. **Changing Themes:**
+   - Click the sun/moon icon in the navigation bar to toggle between light and dark modes
+   - Theme automatically applies across all pages
+   - No page reload required when switching themes
+
+**Technical implementation:**
+- Uses `next-themes` library for theme management
+- Located in `src/components/ThemeToggle.tsx`
+- Implemented with a class-based dark mode approach in Tailwind CSS
+- CSS variables in `globals.css` handle consistent theming across components
+
+## Fretboard Navigator
+
+The Fretboard Navigator helps users learn and memorize the notes on the guitar fretboard through visualization and interactive exercises.
+
+### Features:
+
+1. **Interactive Fretboard Display**
+   - Visual representation of a guitar fretboard
+   - Shows all notes across six strings
+   - Option to toggle between 12-fret and 24-fret display
+   - Frets can be navigated using arrow buttons in 24-fret mode
+
+2. **Note Highlighting**
+   - Click on any note to highlight all occurrences of that note across the fretboard
+   - Option to show only natural notes (non-sharp/flat)
+   - Option to show/hide all notes
+
+3. **Practice Modes**
+   - **Identify Notes**: Quiz mode where a position is highlighted and you must identify the note
+   - **Find Notes**: Asks you to find all occurrences of a specific note on the fretboard
+   - **Notes by String**: Focus on learning one string at a time
+   - **Octave Shapes**: Learn to find octaves of notes across the fretboard
+
+### Usage Instructions:
+
+1. **Basic Navigation:**
+   - Use the "12 Frets" toggle to switch between 12 and 24 frets
+   - In 24-fret mode, use the arrow buttons to navigate along the neck
+   - Click any note to highlight all occurrences of that note
+
+2. **Practice Modes:**
+   - Click "Practice Modes" to show the available practice options
+   - Select a practice mode to begin
+   - Use "Show Answer" to reveal correct answers
+   - "New Question" generates a new challenge
+   - "Exit Practice" returns to explore mode
+
+3. **Identify Notes Mode:**
+   - A position is highlighted with a "?" symbol
+   - Select the correct note from the note buttons below
+   - Feedback shows if your answer is correct or incorrect
+
+**Technical implementation:**
+- Located in `src/components/FretboardDisplay.tsx`
+- Uses React state management for tracking highlight state, practice modes, and quiz states
+- Dynamic rendering based on mode (explore vs. practice)
+- Note position calculation: `(openStringNoteIndex + fret) % 12`
+
+## Scale Explorer
+
+The Scale Explorer allows users to visualize and learn different scales on the guitar fretboard.
+
+### Features:
+
+1. **Scale Selection**
+   - Choose from various scale types: Major, Minor, Pentatonic, Blues, Modes, etc.
+   - Select any root note
+   - View the scale notes and formula
+
+2. **Position Selection**
+   - View scales in different positions along the neck
+   - CAGED system position indicators
+   - Option to view all positions simultaneously
+
+3. **Playback Visualization**
+   - Highlight ascending/descending patterns
+   - Finger placement recommendations
+
+**Technical implementation:**
+- Located in `src/components/ScaleExplorer.tsx`
+- Uses Tonal.js for scale calculations and music theory
+- Scale patterns are mapped to fretboard positions
+- Positions are calculated based on scale formulas and starting frets
+
+## CAGED System
+
+The CAGED System page helps users understand the five basic chord shapes (C, A, G, E, D) and how they connect across the fretboard.
+
+### Features:
+
+1. **Shape Visualization**
+   - Interactive display of the five CAGED shapes
+   - Root note highlighting
+   - Connection points between shapes
+
+2. **Chord Variations**
+   - Major, minor, 7th, and other chord variations for each shape
+   - Fingering suggestions
+   - Optional note labels
+
+3. **Scale Integration**
+   - Shows how scale patterns relate to CAGED shapes
+   - Highlights chord tones within scales
+
+**Technical implementation:**
+- Located in `src/components/CagedSystemDisplay.tsx`
+- Chord shapes are defined as position patterns
+- Transitions between shapes are calculated based on root note positions
+
+## Chord Progressions
+
+The Chord Progressions feature helps users learn common chord progressions and create their own.
+
+### Features:
+
+1. **Progression Library**
+   - Common progressions in different keys
+   - Roman numeral and chord name notation
+   - Genre categorization
+
+2. **Custom Progressions**
+   - Build custom progressions
+   - Transpose to any key
+   - Save and recall favorites
+
+3. **Fretboard Visualization**
+   - See how progressions map to the fretboard
+   - Efficient fingering suggestions
+   - Highlight common tones between chords
+
+**Technical implementation:**
+- Located in `src/components/ChordProgressions.tsx`
+- Uses music theory algorithms for chord calculations
+- Progressions are stored as patterns that can be applied to any key
+
+## Jam Assistant
+
+The Jam Assistant helps users extend chord progressions and build complete song structures.
+
+### Features:
+
+1. **Progression Extensions**
+   - Suggestions for variations on current progression
+   - Bridge and chorus ideas
+   - Extensions based on music theory rules
+
+2. **Song Structure Builder**
+   - Create verse, chorus, bridge sections
+   - Automatic suggestions for complementary sections
+   - Complete song structure visualization
+
+3. **Progression Database**
+   - Common progression patterns by genre
+   - Analysis of progression function
+   - Custom progression input
+
+**Technical implementation:**
+- Located in `src/components/JamAssistant.tsx`
+- Uses a database of progression patterns and relationships
+- Progression suggestions are based on music theory and common practices
+
+## Future Features
+
+### Audio Recognition
+- Note and chord detection from microphone input
+- Real-time feedback on played notes
+- Practice mode with accuracy scoring
+
+### Audio Playback
+- Play scales and progressions
+- Adjustable tempo and rhythm patterns
+- Backing tracks for practice
+
+### Custom Practice Routines
+- Create personalized practice schedules
+- Track progress over time
+- Difficulty adjustment based on performance
+
+## Technical Notes
+
+### State Management
+
+The application uses React's useState and useEffect hooks for state management. Each component manages its own state, including:
+
+- Current display mode
+- Selected notes, scales, or chords
+- Practice mode state
+- User interaction history
+
+### Data Structures
+
+Several key data structures power the application:
+
+1. **Note Mapping**
+   ```typescript
+   const ALL_NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+   ```
+
+2. **String Tuning**
+   ```typescript
+   const STANDARD_TUNING = ['E', 'A', 'D', 'G', 'B', 'E'];
+   ```
+
+3. **Fretboard Position**
+   ```typescript
+   type NotePosition = {
+     string: number;
+     fret: number;
+   };
+   ```
+
+4. **Chord Progressions**
+   ```typescript
+   const PROGRESSION_SUGGESTIONS: ProgressionSuggestions = {
+     'I-IV-V-I': {
+       bridge: [...],
+       variations: [...],
+       extensions: [...]
+     },
+     // other progressions
+   };
+   ``` 
