@@ -6,15 +6,15 @@ This document provides information for developers working on the Guitar Mentor a
 
 ### Prerequisites
 
-- Node.js 18+ and npm
+- Node.js 20+ and npm
 - Git
 
 ### Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/guitar-mentor.git
-   cd guitar-mentor
+   git clone https://github.com/1OlegShev1/GuitarMentor.git
+   cd GuitarMentor
    ```
 
 2. Install dependencies:
@@ -29,12 +29,20 @@ This document provides information for developers working on the Guitar Mentor a
 
 4. Open your browser and navigate to `http://localhost:3000`
 
+5. For network access (to test on other devices):
+   ```bash
+   npm run dev:network
+   ```
+   This will show your local IP addresses and start the server with network access.
+
 ## Project Structure
 
 ```
 /
 ├── docs/                  # Documentation
 ├── public/                # Static assets
+├── scripts/               # Utility scripts
+│   └── find-local-ip.js   # Network IP finder
 ├── src/                   # Source code
 │   ├── app/               # Next.js app directory
 │   │   ├── fretboard/     # Fretboard page
@@ -62,6 +70,58 @@ This document provides information for developers working on the Guitar Mentor a
 ├── tailwind.config.js
 └── tsconfig.json
 ```
+
+## Network Access
+
+The application can be accessed from other devices on the local network, which is useful for testing on mobile devices, tablets, or other computers without deploying to a server.
+
+### Configuration
+
+The network access configuration is set up in the `package.json` scripts:
+
+```json
+"scripts": {
+  "dev": "next dev -H 0.0.0.0 -p 3000",
+  "start": "next start -H 0.0.0.0 -p 3000",
+  "find-ip": "node scripts/find-local-ip.js",
+  "dev:network": "node scripts/find-local-ip.js && next dev -H 0.0.0.0 -p 3000"
+}
+```
+
+### Usage
+
+1. To find your local IP addresses:
+   ```bash
+   npm run find-ip
+   ```
+
+2. To start the development server with network access:
+   ```bash
+   npm run dev:network
+   ```
+
+3. Access the application from other devices using:
+   ```
+   http://YOUR_LOCAL_IP:3000
+   ```
+   Where `YOUR_LOCAL_IP` is the IP address displayed when running the command.
+
+### How It Works
+
+The `-H 0.0.0.0` flag tells Next.js to listen on all network interfaces instead of just localhost. The `find-local-ip.js` script displays your device's local IP addresses to make it easier to connect from other devices.
+
+## Technologies
+
+Guitar Mentor uses the following key technologies:
+
+- **Next.js 15+**: React framework for server-side rendering and static site generation
+- **React 19**: UI component library
+- **TypeScript 5+**: Typed JavaScript
+- **Tailwind CSS 4**: Utility-first CSS framework
+- **Tonal**: Music theory library
+- **Tone.js**: Web Audio framework
+- **Pitchy**: Pitch detection library
+- **Next-themes**: Dark mode implementation
 
 ## Coding Conventions
 
@@ -130,7 +190,7 @@ export default ComponentName;
 
 ## Theming
 
-Guitar Mentor uses a dark/light theme system based on Tailwind CSS and next-themes.
+Guitar Mentor uses a dark/light theme system based on Tailwind CSS 4 and next-themes.
 
 ### Implementation Details
 

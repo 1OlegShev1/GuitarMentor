@@ -8,7 +8,8 @@ The application includes a persistent navigation bar that allows users to move b
 
 **Technical implementation:**
 - Located in `src/components/Navigation.tsx`
-- Uses Next.js `Link` component for client-side navigation
+- Uses Next.js 15 `Link` component for client-side navigation
+- Implemented with React 19 components
 - Highlights the current page based on the current path
 - Provides a mobile-friendly version with a hamburger menu
 - Includes a theme toggle for switching between light and dark modes
@@ -39,7 +40,7 @@ The application supports both light and dark themes to accommodate different use
 **Technical implementation:**
 - Uses `next-themes` library for theme management
 - Located in `src/components/ThemeToggle.tsx`
-- Implemented with a class-based dark mode approach in Tailwind CSS
+- Implemented with a class-based dark mode approach in Tailwind CSS 4
 - CSS variables in `globals.css` handle consistent theming across components
 
 ## Fretboard Navigator

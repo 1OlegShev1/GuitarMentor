@@ -4,12 +4,13 @@ This document outlines the architecture of the Guitar Mentor application.
 
 ## Tech Stack
 
-- **Next.js 14**: React framework with server-side rendering
-- **TypeScript**: For type safety
-- **Tailwind CSS**: For styling
-- **Tone.js**: Audio processing and playback
+- **Next.js 15**: React framework with server-side rendering and app router
+- **React 19**: UI library for component-based development
+- **TypeScript 5**: For type safety and developer experience
+- **Tailwind CSS 4**: Utility-first CSS framework
+- **Tone.js 15**: Audio processing and playback
 - **Pitchy**: Audio analysis for pitch detection
-- **Tonal.js**: Music theory calculations and functions
+- **Tonal.js 6**: Music theory calculations and functions
 
 ## Project Structure
 
@@ -24,6 +25,7 @@ This document outlines the architecture of the Guitar Mentor application.
   /types               # TypeScript type definitions
 /public                # Static assets
 /docs                  # Documentation
+/scripts               # Utility scripts for development
 ```
 
 ## Core Features and Components

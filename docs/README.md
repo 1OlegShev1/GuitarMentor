@@ -11,7 +11,7 @@ This directory contains comprehensive documentation for the Guitar Mentor applic
 
 ### Development
 
-- [Development Guide](./development.md) - Setup instructions, coding conventions, and development roadmap.
+- [Development Guide](./development.md) - Setup instructions, network access configuration, coding conventions, and development roadmap.
 - [Testing Guide](./testing.md) - Component testing, integration testing, and manual testing procedures.
 - [Contribution Guide](./contribution-guide.md) - Guidelines for contributing to the project, including code style and PR process.
 
