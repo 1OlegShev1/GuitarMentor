@@ -132,17 +132,65 @@ const GuitarTuner: React.FC = () => {
     try {
       setErrorMessage(null);
       
-      // Request microphone access
-      microphoneStreamRef.current = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,
-          autoGainControl: false,
-          noiseSuppression: false
+      // Check if running in a secure context (needed for microphone access)
+      const isSecureContext = window.isSecureContext;
+      if (!isSecureContext) {
+        console.warn('Not running in secure context, microphone access may be limited');
+        
+        // Get the current hostname and suggest the HTTPS URL
+        const currentURL = window.location.href;
+        const hostname = window.location.hostname;
+        const port = "3001"; // The HTTPS port we configured
+        
+        // Create specific guidance based on whether we're on localhost or IP address
+        let httpsUrl = "";
+        if (hostname === "localhost" || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+          httpsUrl = `https://${hostname}:${port}${window.location.pathname}`;
         }
-      });
+        
+        // Throw custom error with guidance
+        if (httpsUrl) {
+          throw new Error(`Microphone access requires HTTPS. Please use: ${httpsUrl}`);
+        } else {
+          throw new Error('Microphone access requires HTTPS. Please run with npm run dev:secure and access via https://localhost:3001');
+        }
+      }
+      
+      // Check if mediaDevices exists - can't use polyfills in modern browsers
+      if (!navigator.mediaDevices) {
+        throw new Error('Audio input is not supported in this browser. Please use Chrome or Firefox with HTTPS.');
+      }
+      
+      // Simple try/catch for microphone access
+      try {
+        microphoneStreamRef.current = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            autoGainControl: false,
+            noiseSuppression: false
+          }
+        });
+      } catch (e: any) {
+        console.error("getUserMedia error:", e.name, e.message);
+        throw e;
+      }
       
       // Create audio context
-      audioContextRef.current = new AudioContext();
+      try {
+        // TypeScript-friendly context creation
+        const AudioContextClass = window.AudioContext || 
+                            ((window as any).webkitAudioContext as typeof AudioContext);
+        
+        audioContextRef.current = new AudioContextClass();
+        
+        // This is critical - AudioContext starts in "suspended" state and needs user interaction
+        if (audioContextRef.current.state === 'suspended') {
+          await audioContextRef.current.resume();
+        }
+      } catch (e) {
+        console.error("AudioContext error:", e);
+        throw new Error('Could not initialize audio processing. Please try reloading the page.');
+      }
       
       // Create analyzer
       analyserRef.current = audioContextRef.current.createAnalyser();
@@ -157,7 +205,21 @@ const GuitarTuner: React.FC = () => {
       setIsListening(true);
       
     } catch (error: any) {
-      setErrorMessage(error.message || 'Failed to access microphone');
+      let errorMessage = 'Failed to access microphone';
+      
+      if (error.name === 'NotAllowedError') {
+        errorMessage = 'Microphone access was denied. Please allow microphone permissions in your browser.';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = 'No microphone detected. Please connect a microphone and try again.';
+      } else if (error.name === 'NotReadableError') {
+        errorMessage = 'Cannot access your microphone. It may be in use by another application.';
+      } else if (error.name === 'SecurityError') {
+        errorMessage = 'Microphone access requires HTTPS. This might not work in development mode.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setErrorMessage(errorMessage);
       console.error('Error starting microphone:', error);
       stopListening();
     }
