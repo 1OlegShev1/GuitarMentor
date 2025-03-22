@@ -65,39 +65,6 @@ export default function FretboardPage() {
           </ol>
         </div>
       </div>
-
-      <div className="w-full max-w-5xl">
-        <div className="bg-gray-700 dark:bg-secondary-800 p-2 rounded-t-lg">
-          <h2 className="text-2xl font-bold text-white">Additional Resources</h2>
-        </div>
-        <div className="bg-gray-50 dark:bg-secondary-800 p-6 rounded-b-lg shadow-md">
-          <h3 className="font-bold text-lg mb-2 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-              <path d="M14 6a2 2 0 012-2h2a2 2 0 012 2v8a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z" />
-            </svg>
-            Video Tutorials
-          </h3>
-          <ul className="list-disc ml-10 mb-4 text-gray-700 dark:text-gray-300">
-            <li>Complete Fretboard Memorization in 3 Days</li>
-            <li>The Circle of Fifths and Fretboard Navigation</li>
-            <li>Fretboard Visualization for Improvisation</li>
-          </ul>
-
-          <h3 className="font-bold text-lg mb-2 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            Further Practice Ideas
-          </h3>
-          <ul className="list-disc ml-10 text-gray-700 dark:text-gray-300">
-            <li>Practice finding intervals (3rds, 5ths, etc.) across the fretboard</li>
-            <li>Learn to play the same melody in multiple positions</li>
-            <li>Combine scale patterns with fretboard navigation exercises</li>
-            <li>Practice with a metronome, increasing speed as you improve</li>
-          </ul>
-        </div>
-      </div>
     </main>
   );
 } 
