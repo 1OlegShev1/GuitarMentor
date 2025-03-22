@@ -8,7 +8,7 @@ export default function FretboardPage() {
   const fretboardRef = useRef<HTMLDivElement>(null);
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-6 bg-white dark:bg-zinc-900">
+    <main className="flex min-h-screen flex-col items-center p-6 bg-white dark:bg-secondary-900">
       <h1 className="text-4xl font-bold mb-4 text-center">
         <span className="text-primary">Fret</span>board Navigator
       </h1>
@@ -25,7 +25,7 @@ export default function FretboardPage() {
         <div className="bg-gradient-to-r from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 p-2 rounded-t-lg border-b border-primary/30">
           <h2 className="text-2xl font-bold text-primary">Tips for Learning</h2>
         </div>
-        <div className="bg-gray-50 dark:bg-zinc-800 p-6 rounded-b-lg shadow-md">
+        <div className="bg-gray-50 dark:bg-secondary-800 p-6 rounded-b-lg shadow-md">
           <ol className="space-y-4">
             <li>
               <h3 className="font-bold text-lg flex items-center">
@@ -67,10 +67,10 @@ export default function FretboardPage() {
       </div>
 
       <div className="w-full max-w-5xl">
-        <div className="bg-gray-700 dark:bg-zinc-800 p-2 rounded-t-lg">
+        <div className="bg-gray-700 dark:bg-secondary-800 p-2 rounded-t-lg">
           <h2 className="text-2xl font-bold text-white">Additional Resources</h2>
         </div>
-        <div className="bg-gray-50 dark:bg-zinc-800 p-6 rounded-b-lg shadow-md">
+        <div className="bg-gray-50 dark:bg-secondary-800 p-6 rounded-b-lg shadow-md">
           <h3 className="font-bold text-lg mb-2 flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-primary" viewBox="0 0 20 20" fill="currentColor">
               <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />

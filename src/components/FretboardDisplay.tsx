@@ -286,7 +286,7 @@ const FretboardDisplay: React.FC<FretboardProps> = ({ showPractice = false }) =>
       </div>
 
       {mode === 'explore' && (
-        <div className="mt-4 mb-6 p-4 bg-white dark:bg-zinc-800 rounded-lg border border-gray-200 dark:border-secondary-700 shadow-sm">
+        <div className="mt-4 mb-6 p-4 bg-white dark:bg-secondary-900 rounded-lg border border-gray-200 dark:border-secondary-700 shadow-sm">
           <h2 className="text-lg font-bold mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">Practice Modes</h2>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
@@ -294,7 +294,7 @@ const FretboardDisplay: React.FC<FretboardProps> = ({ showPractice = false }) =>
               onClick={() => {
                 setMode('identify');
               }}
-              className="p-3 text-left rounded-lg transition-colors border border-gray-200 dark:border-secondary-700 bg-white dark:bg-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-600 text-secondary-900 dark:text-white"
+              className="p-3 text-left rounded-lg transition-colors border border-gray-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 hover:bg-gray-100 dark:hover:bg-secondary-700 text-secondary-900 dark:text-white"
             >
               <span className="font-medium block mb-1">Identify Notes</span>
               <span className="text-xs text-secondary-600 dark:text-secondary-300">Name the note at a highlighted position</span>
@@ -304,7 +304,7 @@ const FretboardDisplay: React.FC<FretboardProps> = ({ showPractice = false }) =>
               onClick={() => {
                 setMode('find');
               }}
-              className="p-3 text-left rounded-lg transition-colors border border-gray-200 dark:border-secondary-700 bg-white dark:bg-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-600 text-secondary-900 dark:text-white"
+              className="p-3 text-left rounded-lg transition-colors border border-gray-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 hover:bg-gray-100 dark:hover:bg-secondary-700 text-secondary-900 dark:text-white"
             >
               <span className="font-medium block mb-1">Find Notes</span>
               <span className="text-xs text-secondary-600 dark:text-secondary-300">Locate a specific note across the fretboard</span>
@@ -314,7 +314,7 @@ const FretboardDisplay: React.FC<FretboardProps> = ({ showPractice = false }) =>
               onClick={() => {
                 setMode('byString');
               }}
-              className="p-3 text-left rounded-lg transition-colors border border-gray-200 dark:border-secondary-700 bg-white dark:bg-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-600 text-secondary-900 dark:text-white"
+              className="p-3 text-left rounded-lg transition-colors border border-gray-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 hover:bg-gray-100 dark:hover:bg-secondary-700 text-secondary-900 dark:text-white"
             >
               <span className="font-medium block mb-1">Notes by String</span>
               <span className="text-xs text-secondary-600 dark:text-secondary-300">See all notes on one string at a time</span>
@@ -324,7 +324,7 @@ const FretboardDisplay: React.FC<FretboardProps> = ({ showPractice = false }) =>
               onClick={() => {
                 setMode('octaves');
               }}
-              className="p-3 text-left rounded-lg transition-colors border border-gray-200 dark:border-secondary-700 bg-white dark:bg-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-600 text-secondary-900 dark:text-white"
+              className="p-3 text-left rounded-lg transition-colors border border-gray-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 hover:bg-gray-100 dark:hover:bg-secondary-700 text-secondary-900 dark:text-white"
             >
               <span className="font-medium block mb-1">Octave Shapes</span>
               <span className="text-xs text-secondary-600 dark:text-secondary-300">Learn the pattern of octaves on the fretboard</span>

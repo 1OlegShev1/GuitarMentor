@@ -110,26 +110,52 @@ const ScaleExplorer: React.FC<ScaleExplorerProps> = () => {
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <div className="flex flex-wrap gap-2 items-center">
           <label className="text-sm font-medium">Root Note:</label>
-          <select 
-            value={rootNote}
-            onChange={(e) => setRootNote(e.target.value)}
-            className="bg-white dark:bg-secondary-800 border border-secondary-300 dark:border-secondary-600 rounded-md px-3 py-1"
-          >
-            {ALL_NOTES.map(note => (
-              <option key={note} value={note}>{note}</option>
-            ))}
-          </select>
+          <div className="relative inline-block">
+            <select 
+              value={rootNote}
+              onChange={(e) => setRootNote(e.target.value)}
+              className="block w-full bg-white dark:bg-secondary-800 border border-secondary-300 dark:border-secondary-600 rounded-md px-3 pr-8 py-1 focus:outline-none"
+              style={{ 
+                WebkitAppearance: "none", 
+                MozAppearance: "none", 
+                appearance: "none",
+                backgroundImage: "none"
+              }}
+            >
+              {ALL_NOTES.map(note => (
+                <option key={note} value={note}>{note}</option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 dark:text-gray-400">
+              <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+              </svg>
+            </div>
+          </div>
           
           <label className="text-sm font-medium ml-4">Scale:</label>
-          <select 
-            value={scaleType}
-            onChange={(e) => setScaleType(e.target.value as ScaleType)}
-            className="bg-white dark:bg-secondary-800 border border-secondary-300 dark:border-secondary-600 rounded-md px-3 py-1"
-          >
-            {Object.entries(SCALE_TYPES).map(([key, { name }]) => (
-              <option key={key} value={key}>{name}</option>
-            ))}
-          </select>
+          <div className="relative inline-block">
+            <select 
+              value={scaleType}
+              onChange={(e) => setScaleType(e.target.value as ScaleType)}
+              className="block w-full bg-white dark:bg-secondary-800 border border-secondary-300 dark:border-secondary-600 rounded-md px-3 pr-8 py-1 focus:outline-none"
+              style={{ 
+                WebkitAppearance: "none", 
+                MozAppearance: "none", 
+                appearance: "none",
+                backgroundImage: "none"
+              }}
+            >
+              {Object.entries(SCALE_TYPES).map(([key, { name }]) => (
+                <option key={key} value={key}>{name}</option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 dark:text-gray-400">
+              <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+              </svg>
+            </div>
+          </div>
         </div>
         
         <div className="flex items-center space-x-2">
@@ -280,7 +306,7 @@ const ScaleExplorer: React.FC<ScaleExplorerProps> = () => {
                 className={`px-3 py-1 rounded-md text-sm ${
                   note === rootNote 
                     ? 'bg-primary-600 text-white' 
-                    : 'bg-white dark:bg-secondary-700'
+                    : 'bg-white dark:bg-secondary-800'
                 }`}
               >
                 {note}

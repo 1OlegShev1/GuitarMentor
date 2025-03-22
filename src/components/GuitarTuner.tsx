@@ -382,20 +382,32 @@ const GuitarTuner: React.FC = () => {
       <div className="mt-8">
         <div className="mb-4 w-full">
           <label htmlFor="tuning-select" className="block mb-2 font-medium text-lg">Select Tuning:</label>
-          <select
-            id="tuning-select"
-            value={selectedTuning}
-            onChange={(e) => setSelectedTuning(e.target.value as TuningName)}
-            className="w-full p-2 border border-gray-300 dark:border-secondary-600 rounded 
-                     bg-white dark:bg-secondary-700 focus:ring-2 focus:ring-primary-500 text-base"
-            disabled={isListening}
-          >
-            {Object.keys(TUNINGS).map((tuning) => (
-              <option key={tuning} value={tuning}>
-                {tuning}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              id="tuning-select"
+              value={selectedTuning}
+              onChange={(e) => setSelectedTuning(e.target.value as TuningName)}
+              className="appearance-none w-full p-2 border border-gray-300 dark:border-secondary-600 rounded bg-white dark:bg-secondary-700 focus:ring-2 focus:ring-primary-500 text-base pr-10"
+              style={{ 
+                WebkitAppearance: "none", 
+                MozAppearance: "none", 
+                appearance: "none",
+                backgroundImage: "none"
+              }}
+              disabled={isListening}
+            >
+              {Object.keys(TUNINGS).map((tuning) => (
+                <option key={tuning} value={tuning}>
+                  {tuning}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 dark:text-gray-400">
+              <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+              </svg>
+            </div>
+          </div>
         </div>
         
         <h3 className="font-medium mb-3 text-lg w-full">{selectedTuning} Tuning:</h3>
