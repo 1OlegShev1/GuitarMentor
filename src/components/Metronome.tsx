@@ -122,14 +122,36 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
 
   // Update metronome when tempo changes
   useEffect(() => {
+    const updateTempo = async () => {
+      if (isPlaying) {
+        // Just update the BPM without recreating everything
+        Tone.Transport.bpm.value = tempo;
+      }
+    };
+    updateTempo();
+    // Update the input field when tempo changes from buttons
+    setTempoBpmInput(tempo.toString());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying, tempo]);
+
+  // Handle time signature changes
+  useEffect(() => {
     if (isPlaying) {
       stopMetronome();
       startMetronome();
     }
-    // Update the input field when tempo changes from buttons
-    setTempoBpmInput(tempo.toString());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying, tempo, timeSignature, tickVolume]);
+  }, [timeSignature]);
+
+  // Handle volume changes
+  useEffect(() => {
+    // Just update volumes without recreating synths
+    if (tickSoundRef.current) {
+      tickSoundRef.current.volume.value = Tone.gainToDb(tickVolume);
+    }
+    if (accentSoundRef.current) {
+      accentSoundRef.current.volume.value = Tone.gainToDb(tickVolume);
+    }
+  }, [tickVolume]);
 
   // Reset currentBeat when metronome stops
   useEffect(() => {
@@ -313,26 +335,26 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
       // Create hi-hat sounds using MetalSynth
       tickSoundRef.current = new Tone.MetalSynth({
         envelope: {
-          attack: 0.001,
-          decay: 0.1,
+          attack: 0.002,
+          decay: 0.05,
           release: 0.01
         },
-        harmonicity: 5.1,
-        modulationIndex: 32,
-        resonance: 4000,
-        octaves: 1.5
+        harmonicity: 3.5,
+        modulationIndex: 20,
+        resonance: 2000,
+        octaves: 1.2
       }).toDestination() as unknown as MetalSynth;
       
       accentSoundRef.current = new Tone.MetalSynth({
         envelope: {
-          attack: 0.001,
-          decay: 0.15,
+          attack: 0.002,
+          decay: 0.08,
           release: 0.01
         },
-        harmonicity: 5.1,
-        modulationIndex: 32,
-        resonance: 4000,
-        octaves: 1.5
+        harmonicity: 3.5,
+        modulationIndex: 20,
+        resonance: 2000,
+        octaves: 1.2
       }).toDestination() as unknown as MetalSynth;
 
       // Set volumes
