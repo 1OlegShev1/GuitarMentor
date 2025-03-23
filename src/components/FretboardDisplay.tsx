@@ -54,6 +54,32 @@ const FretboardDisplay: React.FC<FretboardProps> = ({ showPractice = false }) =>
 
   // Track found octaves
   const [foundOctaves, setFoundOctaves] = useState<NotePosition[]>([]);
+  const [totalOctaves, setTotalOctaves] = useState<number>(0);
+
+  // Determine visible fret range - always show 13 frets (12 + nut)
+  const visibleFretCount = 13;
+  const fretsToShow = Math.min(visibleFretCount, FRET_COUNT + 1 - startFret);
+  const endFret = startFret + fretsToShow - 1;
+
+  // Calculate total octaves for the current note
+  const calculateTotalOctaves = (note: string) => {
+    let count = 0;
+    for (let string = 0; string < 6; string++) {
+      for (let fret = startFret; fret <= endFret; fret++) {
+        if (getNoteAtPosition(string, fret) === note) {
+          count++;
+        }
+      }
+    }
+    return count;
+  };
+
+  // Effect to update total octaves when highlight note or fret range changes
+  useEffect(() => {
+    if (mode === 'octaves' && highlightNote) {
+      setTotalOctaves(calculateTotalOctaves(highlightNote));
+    }
+  }, [highlightNote, startFret, endFret, mode]);
 
   // Effect to handle the showPractice prop
   useEffect(() => {
@@ -190,12 +216,22 @@ const FretboardDisplay: React.FC<FretboardProps> = ({ showPractice = false }) =>
         // Set the initial note when none is selected
         setHighlightNote(note);
         setFoundOctaves([{ string: stringIndex, fret }]);
+        setTotalOctaves(calculateTotalOctaves(note));
         return;
       }
       if (isOctavePosition(note, highlightNote)) {
         const newPosition = { string: stringIndex, fret };
         if (!foundOctaves.some(pos => pos.string === stringIndex && pos.fret === fret)) {
-          setFoundOctaves([...foundOctaves, newPosition]);
+          const newFoundOctaves = [...foundOctaves, newPosition];
+          setFoundOctaves(newFoundOctaves);
+          
+          // Check if all octaves are found
+          if (newFoundOctaves.length === totalOctaves) {
+            setQuizResult('correct');
+            setTimeout(() => {
+              setQuizResult(null);
+            }, 2000);
+          }
         }
       } else {
         setQuizResult('incorrect');
@@ -246,11 +282,6 @@ const FretboardDisplay: React.FC<FretboardProps> = ({ showPractice = false }) =>
     }
   };
   
-  // Determine visible fret range - always show 13 frets (12 + nut)
-  const visibleFretCount = 13;
-  const fretsToShow = Math.min(visibleFretCount, FRET_COUNT + 1 - startFret);
-  const endFret = startFret + fretsToShow - 1;
-
   // Check if current quiz position is visible
   const isQuizPositionVisible = quizPosition ? 
     quizPosition.fret >= startFret && quizPosition.fret <= endFret : 
@@ -497,11 +528,19 @@ const FretboardDisplay: React.FC<FretboardProps> = ({ showPractice = false }) =>
             <p>• Same string: Move up 12 frets</p>
             <p>• Two strings up: Move back 3 frets</p>
             <p>• Two strings down: Move up 3 frets</p>
+            <p className="mt-2">Found {foundOctaves.length} of {totalOctaves} octaves</p>
           </div>
           {quizResult === 'incorrect' && (
             <div className="mt-2 p-2 bg-red-100 dark:bg-red-900/30 rounded">
               <p className="text-sm text-red-600 dark:text-red-400">
                 That's not an octave. Try following the patterns above!
+              </p>
+            </div>
+          )}
+          {quizResult === 'correct' && (
+            <div className="mt-2 p-2 bg-green-100 dark:bg-green-900/30 rounded">
+              <p className="text-sm text-green-600 dark:text-green-400">
+                Great job! You've found all the octaves of {highlightNote}! Try another note or click "Random Note".
               </p>
             </div>
           )}
