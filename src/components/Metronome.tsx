@@ -98,39 +98,9 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
 
   // Initialize Tone.js metronome
   useEffect(() => {
-    const config = getSoundConfig();
-    
-    // Create synth sounds for metronome
-    if (soundType === 'drums') {
-      // Use noise synth for drum sounds
-      tickSoundRef.current = new Tone.NoiseSynth({
-        noise: { type: 'white' },
-        envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 }
-      }).toDestination();
-      
-      accentSoundRef.current = new Tone.NoiseSynth({
-        noise: { type: 'white' },
-        envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
-      }).toDestination();
-    } else {
-      // Use regular synth for other sound types
-      tickSoundRef.current = new Tone.Synth({
-        oscillator: { type: config.regular.type as any },
-        envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
-      }).toDestination();
-      
-      accentSoundRef.current = new Tone.Synth({
-        oscillator: { type: config.accent.type as any },
-        envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
-      }).toDestination();
-    }
-    
-    // Apply volume setting
-    if (tickSoundRef.current) {
-      tickSoundRef.current.volume.value = Tone.gainToDb(tickVolume);
-    }
-    if (accentSoundRef.current) {
-      accentSoundRef.current.volume.value = Tone.gainToDb(tickVolume);
+    // Only create new sounds if we're not playing, otherwise handled by handleSoundTypeChange
+    if (!isPlaying) {
+      updateSoundEngine(soundType);
     }
     
     // Clean up on unmount
@@ -151,7 +121,7 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
         accentSoundRef.current.dispose();
       }
     };
-  }, [soundType, tickVolume]);
+  }, [soundType, tickVolume, isPlaying]);
 
   // Update metronome when tempo changes
   useEffect(() => {
@@ -327,7 +297,59 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
 
   // Sound type change handler
   const handleSoundTypeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setSoundType(event.target.value as SoundType);
+    const newSoundType = event.target.value as SoundType;
+    setSoundType(newSoundType);
+    
+    // If metronome is playing, update the sounds without stopping
+    if (isPlaying) {
+      updateSoundEngine(newSoundType);
+    }
+  };
+
+  // Function to update sound engine without stopping metronome
+  const updateSoundEngine = (soundTypeToUse: SoundType) => {
+    const config = getSoundConfig();
+    
+    // Dispose of old synths if they exist
+    if (tickSoundRef.current) {
+      tickSoundRef.current.dispose();
+    }
+    if (accentSoundRef.current) {
+      accentSoundRef.current.dispose();
+    }
+    
+    // Create new synths with the new sound type
+    if (soundTypeToUse === 'drums') {
+      // Use noise synth for drum sounds
+      tickSoundRef.current = new Tone.NoiseSynth({
+        noise: { type: 'white' },
+        envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 }
+      }).toDestination();
+      
+      accentSoundRef.current = new Tone.NoiseSynth({
+        noise: { type: 'white' },
+        envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
+      }).toDestination();
+    } else {
+      // Use regular synth for other sound types
+      tickSoundRef.current = new Tone.Synth({
+        oscillator: { type: config.regular.type as any },
+        envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
+      }).toDestination();
+      
+      accentSoundRef.current = new Tone.Synth({
+        oscillator: { type: config.accent.type as any },
+        envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
+      }).toDestination();
+    }
+    
+    // Apply volume setting
+    if (tickSoundRef.current) {
+      tickSoundRef.current.volume.value = Tone.gainToDb(tickVolume);
+    }
+    if (accentSoundRef.current) {
+      accentSoundRef.current.volume.value = Tone.gainToDb(tickVolume);
+    }
   };
 
   const saveSettings = () => {
