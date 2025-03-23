@@ -1,399 +1,554 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { PitchDetector } from 'pitchy';
 import { FaMicrophone, FaMicrophoneSlash } from 'react-icons/fa';
 
-// Standard tuning notes for guitar
-type GuitarString = { name: string; frequency: number };
-type TuningName = 'Standard' | 'Drop D' | 'Half Step Down' | 'Open G' | 'DADGAD';
-type Tuning = GuitarString[];
-type TuningMap = {
-  [key in TuningName]: Tuning;
+// Guitar strings with their standard frequencies
+const GUITAR_TUNINGS = {
+  'Standard': [
+    { string: '6th string (E)', note: 'E2', frequency: 82.41 },
+    { string: '5th string (A)', note: 'A2', frequency: 110.00 },
+    { string: '4th string (D)', note: 'D3', frequency: 146.83 },
+    { string: '3rd string (G)', note: 'G3', frequency: 196.00 },
+    { string: '2nd string (B)', note: 'B3', frequency: 246.94 },
+    { string: '1st string (E)', note: 'E4', frequency: 329.63 }
+  ],
+  'Drop D': [
+    { string: '6th string (D)', note: 'D2', frequency: 73.42 },
+    { string: '5th string (A)', note: 'A2', frequency: 110.00 },
+    { string: '4th string (D)', note: 'D3', frequency: 146.83 },
+    { string: '3rd string (G)', note: 'G3', frequency: 196.00 },
+    { string: '2nd string (B)', note: 'B3', frequency: 246.94 },
+    { string: '1st string (E)', note: 'E4', frequency: 329.63 }
+  ],
+  'Half Step Down': [
+    { string: '6th string (Eb)', note: 'Eb2', frequency: 77.78 },
+    { string: '5th string (Ab)', note: 'Ab2', frequency: 103.83 },
+    { string: '4th string (Db)', note: 'Db3', frequency: 138.59 },
+    { string: '3rd string (Gb)', note: 'Gb3', frequency: 185.00 },
+    { string: '2nd string (Bb)', note: 'Bb3', frequency: 233.08 },
+    { string: '1st string (Eb)', note: 'Eb4', frequency: 311.13 }
+  ],
+  'Open G': [
+    { string: '6th string (D)', note: 'D2', frequency: 73.42 },
+    { string: '5th string (G)', note: 'G2', frequency: 98.00 },
+    { string: '4th string (D)', note: 'D3', frequency: 146.83 },
+    { string: '3rd string (G)', note: 'G3', frequency: 196.00 },
+    { string: '2nd string (B)', note: 'B3', frequency: 246.94 },
+    { string: '1st string (D)', note: 'D4', frequency: 293.66 }
+  ],
+  'DADGAD': [
+    { string: '6th string (D)', note: 'D2', frequency: 73.42 },
+    { string: '5th string (A)', note: 'A2', frequency: 110.00 },
+    { string: '4th string (D)', note: 'D3', frequency: 146.83 },
+    { string: '3rd string (G)', note: 'G3', frequency: 196.00 },
+    { string: '2nd string (A)', note: 'A3', frequency: 220.00 },
+    { string: '1st string (D)', note: 'D4', frequency: 293.66 }
+  ]
 };
 
-const STANDARD_TUNING: Tuning = [
-  { name: 'E2', frequency: 82.41 },
-  { name: 'A2', frequency: 110.00 },
-  { name: 'D3', frequency: 146.83 },
-  { name: 'G3', frequency: 196.00 },
-  { name: 'B3', frequency: 246.94 },
-  { name: 'E4', frequency: 329.63 }
-];
+type TuningName = keyof typeof GUITAR_TUNINGS;
+type GuitarString = typeof GUITAR_TUNINGS['Standard'][0];
 
-// Drop D tuning
-const DROP_D_TUNING: Tuning = [
-  { name: 'D2', frequency: 73.42 },
-  { name: 'A2', frequency: 110.00 },
-  { name: 'D3', frequency: 146.83 },
-  { name: 'G3', frequency: 196.00 },
-  { name: 'B3', frequency: 246.94 },
-  { name: 'E4', frequency: 329.63 }
-];
-
-// Half Step Down tuning (Eb Standard)
-const HALF_STEP_DOWN_TUNING: Tuning = [
-  { name: 'Eb2', frequency: 77.78 },
-  { name: 'Ab2', frequency: 103.83 },
-  { name: 'Db3', frequency: 138.59 },
-  { name: 'Gb3', frequency: 185.00 },
-  { name: 'Bb3', frequency: 233.08 },
-  { name: 'Eb4', frequency: 311.13 }
-];
-
-// Open G tuning
-const OPEN_G_TUNING: Tuning = [
-  { name: 'D2', frequency: 73.42 },
-  { name: 'G2', frequency: 98.00 },
-  { name: 'D3', frequency: 146.83 },
-  { name: 'G3', frequency: 196.00 },
-  { name: 'B3', frequency: 246.94 },
-  { name: 'D4', frequency: 293.66 }
-];
-
-// DADGAD tuning
-const DADGAD_TUNING: Tuning = [
-  { name: 'D2', frequency: 73.42 },
-  { name: 'A2', frequency: 110.00 },
-  { name: 'D3', frequency: 146.83 },
-  { name: 'G3', frequency: 196.00 },
-  { name: 'A3', frequency: 220.00 },
-  { name: 'D4', frequency: 293.66 }
-];
-
-// All available tunings
-const TUNINGS: TuningMap = {
-  'Standard': STANDARD_TUNING,
-  'Drop D': DROP_D_TUNING,
-  'Half Step Down': HALF_STEP_DOWN_TUNING,
-  'Open G': OPEN_G_TUNING,
-  'DADGAD': DADGAD_TUNING
-};
-
-// Helper function to find closest guitar string
-const findClosestString = (frequency: number, guitarStrings: Tuning): GuitarString => {
-  return guitarStrings.reduce((prev, curr) => {
-    return (Math.abs(curr.frequency - frequency) < Math.abs(prev.frequency - frequency)) 
-      ? curr 
-      : prev;
-  });
-};
-
-// Calculate note accuracy
-const calculateTuningAccuracy = (detectedFreq: number, targetFreq: number) => {
-  const percentageDiff = ((detectedFreq - targetFreq) / targetFreq) * 100;
-  const centsDiff = 1200 * Math.log2(detectedFreq / targetFreq);
-  
-  return {
-    percentageDiff,
-    centsDiff,
-    isTooHigh: centsDiff > 5,    // More than 5 cents higher
-    isTooLow: centsDiff < -5,    // More than 5 cents lower
-    isInTune: Math.abs(centsDiff) <= 5  // Within 5 cents of target
-  };
-};
-
+// Simple Guitar Tuner component
 const GuitarTuner: React.FC = () => {
+  // State variables
   const [isListening, setIsListening] = useState(false);
-  const [detectedNote, setDetectedNote] = useState<string | null>(null);
-  const [detectedFrequency, setDetectedFrequency] = useState<number | null>(null);
-  const [closestString, setClosestString] = useState(STANDARD_TUNING[0]);
   const [selectedTuning, setSelectedTuning] = useState<TuningName>('Standard');
-  const [tuningStatus, setTuningStatus] = useState<{
-    percentageDiff: number;
-    centsDiff: number;
-    isTooHigh: boolean;
-    isTooLow: boolean;
-    isInTune: boolean;
-  } | null>(null);
+  const [detectedPitch, setDetectedPitch] = useState<number | null>(null);
+  const [closestString, setClosestString] = useState<GuitarString | null>(null);
+  const [centsDifference, setCentsDifference] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [audioLevel, setAudioLevel] = useState(0); // Add state for audio level meter
   
+  // References for audio objects
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const microphoneStreamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   
-  // Start/stop microphone access
-  const toggleMicrophone = async () => {
-    try {
-      if (isListening) {
-        stopListening();
-      } else {
-        await startListening();
+  // Buffer for stability
+  const pitchHistoryRef = useRef<number[]>([]);
+  
+  // Calculate cents difference between two frequencies
+  const calculateCents = (detected: number, target: number): number => {
+    return 1200 * Math.log2(detected / target);
+  };
+  
+  // Find the closest string in the current tuning
+  const findClosestString = (frequency: number): GuitarString => {
+    const currentTuning = GUITAR_TUNINGS[selectedTuning];
+    
+    let closestString = currentTuning[0];
+    let smallestCentsDiff = Math.abs(calculateCents(frequency, currentTuning[0].frequency));
+    
+    for (const guitarString of currentTuning) {
+      const centsDiff = Math.abs(calculateCents(frequency, guitarString.frequency));
+      if (centsDiff < smallestCentsDiff) {
+        smallestCentsDiff = centsDiff;
+        closestString = guitarString;
       }
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Error accessing microphone');
-      console.error('Microphone access error:', error);
+    }
+    
+    return closestString;
+  };
+  
+  // Start/stop tuner
+  const toggleTuner = async () => {
+    if (isListening) {
+      stopTuner();
+    } else {
+      await startTuner();
     }
   };
   
-  // Initialize microphone stream
-  const startListening = async () => {
+  // Autocorrelation-based pitch detection algorithm
+  // This is a standard algorithm for pitch detection that works well in browsers
+  const autoCorrelate = (buffer: Float32Array, sampleRate: number) => {
+    // Simplified ACF algorithm for better performance
+    const bufferSize = buffer.length;
+    
+    // Check for signal level
+    let rms = 0;
+    for (let i = 0; i < bufferSize; i++) {
+      rms += buffer[i] * buffer[i];
+    }
+    rms = Math.sqrt(rms / bufferSize);
+    
+    // Increased threshold for noise rejection - require a stronger signal
+    if (rms < 0.01) { // Increased from 0.005 to reject more background noise
+      return -1;
+    }
+    
+    // Find ACF (autocorrelation function)
+    const acf = new Float32Array(bufferSize / 2);
+    for (let lag = 0; lag < bufferSize / 2; lag++) {
+      let sum = 0;
+      for (let i = 0; i < bufferSize / 2; i++) {
+        sum += buffer[i] * buffer[i + lag];
+      }
+      acf[lag] = sum;
+    }
+    
+    // Find peaks
+    let maxACF = -Infinity;
+    let maxLag = -1;
+    
+    // Start searching from lag 23 (corresponds to ~2000 Hz) to avoid detecting harmonics
+    // and go up to lag 1000 (corresponds to ~48 Hz)
+    const minLag = Math.floor(sampleRate / 2000);
+    const maxSearchLag = Math.min(bufferSize / 2, Math.floor(sampleRate / 45));
+    
+    for (let lag = minLag; lag < maxSearchLag; lag++) {
+      if (acf[lag] > maxACF) {
+        maxACF = acf[lag];
+        maxLag = lag;
+      }
+    }
+    
+    // No clear peak found
+    if (maxLag === -1) {
+      return -1;
+    }
+    
+    // Require a stronger peak correlation compared to the zero lag
+    // This helps filter out noise and non-pitched sounds
+    if (maxACF < acf[0] * 0.5) { // Require peak to be at least 50% of zero lag
+      return -1;
+    }
+    
+    // Refine peak with quadratic interpolation
+    const y1 = acf[maxLag - 1];
+    const y2 = acf[maxLag];
+    const y3 = acf[maxLag + 1];
+    
+    const refineOffset = (y3 - y1) / (2 * (2 * y2 - y1 - y3));
+    const refinedLag = maxLag + refineOffset;
+    
+    // Convert lag to frequency
+    const frequency = sampleRate / refinedLag;
+    
+    // Check if frequency is in guitar range (E1 to B4)
+    if (frequency < 75 || frequency > 500) { // Narrower range to eliminate non-guitar sounds
+      return -1;
+    }
+    
+    return frequency;
+  };
+  
+  // The pitch detection loop
+  const detectPitch = () => {
+    if (!analyserRef.current || !audioContextRef.current) {
+      animationFrameRef.current = requestAnimationFrame(detectPitch);
+      return;
+    }
+    
+    const analyser = analyserRef.current;
+    const sampleRate = audioContextRef.current.sampleRate;
+    
+    // Get audio data
+    const bufferLength = analyser.fftSize;
+    const audioData = new Float32Array(bufferLength);
+    analyser.getFloatTimeDomainData(audioData);
+    
+    // Check if we have audio signal
+    const signalSum = audioData.reduce((sum, value) => sum + Math.abs(value), 0);
+    const avgSignal = signalSum / bufferLength;
+    
+    // Update audio level meter with reasonable amplification
+    const meterLevel = Math.min(100, Math.max(0, avgSignal * 1000)); // Reduced for less sensitivity
+    setAudioLevel(meterLevel);
+    
+    // Apply a moderate software gain to boost the signal before processing
+    const gainedAudioData = new Float32Array(bufferLength);
+    const gain = 3.0; // Reduced for less sensitivity
+    for (let i = 0; i < bufferLength; i++) {
+      gainedAudioData[i] = Math.max(-1, Math.min(1, audioData[i] * gain)); // Clamp to valid range
+    }
+    
+    // Detect pitch using autocorrelation with the boosted signal
+    const frequency = autoCorrelate(gainedAudioData, sampleRate);
+    
+    // Only use reliable pitch readings (frequency > 0 means valid detection)
+    if (frequency > 0) {
+      // Add to history for stability (keep last 5 readings)
+      pitchHistoryRef.current.push(frequency);
+      if (pitchHistoryRef.current.length > 5) {
+        pitchHistoryRef.current.shift();
+      }
+      
+      // Only update if we have enough readings and frequencies are close to each other
+      // This prevents jumping around with sporadic detections
+      if (pitchHistoryRef.current.length >= 3) { // Increased for more stability
+        // Calculate median frequency (more stable than mean)
+        const sortedPitches = [...pitchHistoryRef.current].sort((a, b) => a - b);
+        const medianPitch = sortedPitches[Math.floor(sortedPitches.length / 2)];
+        
+        // Check if the recent readings are consistent (within 5% of median)
+        const isStable = pitchHistoryRef.current.every(p => 
+          Math.abs(p - medianPitch) / medianPitch < 0.05
+        );
+        
+        if (isStable) {
+          // Find closest string
+          const closest = findClosestString(medianPitch);
+          
+          // Calculate cents difference
+          const cents = calculateCents(medianPitch, closest.frequency);
+          
+          // Update state
+          setDetectedPitch(medianPitch);
+          setClosestString(closest);
+          setCentsDifference(cents);
+        }
+      }
+    }
+    
+    // Continue loop
+    animationFrameRef.current = requestAnimationFrame(detectPitch);
+  };
+  
+  // Initialize pitch detector and start listening
+  const startTuner = async () => {
     try {
       setErrorMessage(null);
       
-      // Check if running in a secure context (needed for microphone access)
-      const isSecureContext = window.isSecureContext;
-      if (!isSecureContext) {
-        console.warn('Not running in secure context, microphone access may be limited');
-        
-        // Get the current hostname and suggest the HTTPS URL
-        const currentURL = window.location.href;
-        const hostname = window.location.hostname;
-        const port = "3001"; // The HTTPS port we configured
-        
-        // Create specific guidance based on whether we're on localhost or IP address
-        let httpsUrl = "";
-        if (hostname === "localhost" || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-          httpsUrl = `https://${hostname}:${port}${window.location.pathname}`;
-        }
-        
-        // Throw custom error with guidance
-        if (httpsUrl) {
-          throw new Error(`Microphone access requires HTTPS. Please use: ${httpsUrl}`);
-        } else {
-          throw new Error('Microphone access requires HTTPS. Please run with npm run dev:secure and access via https://localhost:3001');
-        }
+      // Check for secure context (needed for microphone)
+      if (!window.isSecureContext) {
+        throw new Error('Microphone access requires HTTPS. Please use a secure connection.');
       }
       
-      // Check if mediaDevices exists - can't use polyfills in modern browsers
-      if (!navigator.mediaDevices) {
-        throw new Error('Audio input is not supported in this browser. Please use Chrome or Firefox with HTTPS.');
+      // Check if the browser supports audio input
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Your browser doesn\'t support audio input. Please use Chrome, Firefox, or Edge.');
       }
       
-      // Simple try/catch for microphone access
-      try {
-        microphoneStreamRef.current = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: false,
-            autoGainControl: false,
-            noiseSuppression: false
-          }
-        });
-      } catch (e: any) {
-        console.error("getUserMedia error:", e.name, e.message);
-        throw e;
+      // First close any existing resources to avoid duplicates
+      if (isListening) {
+        await stopTuner();
       }
+      
+      // Get microphone access with balanced settings
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false, // Disable echo cancellation for cleaner signal
+          autoGainControl: true,   // Enable auto gain for better sensitivity
+          noiseSuppression: true,  // Enable noise suppression to filter ambient noise
+          channelCount: 1
+        }
+      });
+      microphoneStreamRef.current = stream;
       
       // Create audio context
-      try {
-        // TypeScript-friendly context creation
-        const AudioContextClass = window.AudioContext || 
-                            ((window as any).webkitAudioContext as typeof AudioContext);
-        
-        audioContextRef.current = new AudioContextClass();
-        
-        // This is critical - AudioContext starts in "suspended" state and needs user interaction
-        if (audioContextRef.current.state === 'suspended') {
-          await audioContextRef.current.resume();
-        }
-      } catch (e) {
-        console.error("AudioContext error:", e);
-        throw new Error('Could not initialize audio processing. Please try reloading the page.');
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) {
+        throw new Error('Web Audio API is not supported in this browser.');
       }
       
-      // Create analyzer
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      analyserRef.current.fftSize = 2048;
+      const audioContext = new AudioContext();
+      audioContextRef.current = audioContext;
       
-      // Connect microphone stream to analyzer
-      const microphone = audioContextRef.current.createMediaStreamSource(microphoneStreamRef.current);
-      microphone.connect(analyserRef.current);
+      // Resume context (needed in some browsers)
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
       
-      // Start pitch detection
-      updatePitch();
+      // Create analyzer node with balanced settings for guitar
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 2048; // Must be a power of 2
+      analyser.smoothingTimeConstant = 0.2; // Middle ground between responsiveness and stability
+      analyserRef.current = analyser;
+      
+      // Create a gain node with moderate amplification
+      const gainNode = audioContext.createGain();
+      gainNode.gain.value = 1.5; // More conservative gain (reduced from 2.0)
+      
+      // Connect microphone -> gain -> analyzer
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(gainNode);
+      gainNode.connect(analyser);
+      
+      // Start detection loop
+      pitchHistoryRef.current = [];
       setIsListening(true);
+      detectPitch();
       
     } catch (error: any) {
-      let errorMessage = 'Failed to access microphone';
+      let message = 'Error accessing microphone';
       
       if (error.name === 'NotAllowedError') {
-        errorMessage = 'Microphone access was denied. Please allow microphone permissions in your browser.';
+        message = 'Microphone access was denied. Please allow microphone permissions in your browser.';
       } else if (error.name === 'NotFoundError') {
-        errorMessage = 'No microphone detected. Please connect a microphone and try again.';
-      } else if (error.name === 'NotReadableError') {
-        errorMessage = 'Cannot access your microphone. It may be in use by another application.';
-      } else if (error.name === 'SecurityError') {
-        errorMessage = 'Microphone access requires HTTPS. This might not work in development mode.';
+        message = 'No microphone found. Please connect a microphone.';
       } else if (error.message) {
-        errorMessage = error.message;
+        message = error.message;
       }
       
-      setErrorMessage(errorMessage);
-      console.error('Error starting microphone:', error);
-      stopListening();
+      setErrorMessage(message);
+      console.error('Tuner error:', error);
+      stopTuner();
     }
   };
   
   // Clean up resources
-  const stopListening = () => {
+  const stopTuner = () => {
+    // Cancel animation frame
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
     
+    // Stop microphone
     if (microphoneStreamRef.current) {
       microphoneStreamRef.current.getTracks().forEach(track => track.stop());
       microphoneStreamRef.current = null;
     }
     
-    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+    // Close audio context
+    if (audioContextRef.current) {
       audioContextRef.current.close();
       audioContextRef.current = null;
     }
     
+    // Clear refs and state
     analyserRef.current = null;
+    pitchHistoryRef.current = [];
+    setDetectedPitch(null);
+    setClosestString(null);
+    setCentsDifference(null);
     setIsListening(false);
-    setDetectedNote(null);
-    setDetectedFrequency(null);
-    setTuningStatus(null);
   };
   
-  // Cleanup when component unmounts
+  // Clean up on unmount
   useEffect(() => {
     return () => {
-      stopListening();
+      stopTuner();
     };
   }, []);
   
-  // Process audio data and detect pitch
-  const updatePitch = () => {
-    if (!analyserRef.current || !audioContextRef.current) {
-      animationFrameRef.current = requestAnimationFrame(updatePitch);
-      return;
-    }
-    
-    const bufferLength = analyserRef.current.fftSize;
-    const buffer = new Float32Array(bufferLength);
-    analyserRef.current.getFloatTimeDomainData(buffer);
-    
-    // Use pitchy for pitch detection
-    const detector = PitchDetector.forFloat32Array(bufferLength);
-    const [pitch, clarity] = detector.findPitch(buffer, audioContextRef.current.sampleRate);
-    
-    // Only use result if clarity is high enough (reduce noise)
-    if (clarity > 0.8 && pitch > 60 && pitch < 1000) {
-      setDetectedFrequency(pitch);
-      
-      // Find closest guitar string in the selected tuning
-      const currentTuning = TUNINGS[selectedTuning];
-      const closest = findClosestString(pitch, currentTuning);
-      setClosestString(closest);
-      
-      // Calculate tuning accuracy
-      const accuracy = calculateTuningAccuracy(pitch, closest.frequency);
-      setTuningStatus(accuracy);
-      
-      // Set note name
-      setDetectedNote(closest.name);
-    }
-    
-    // Continue updating
-    animationFrameRef.current = requestAnimationFrame(updatePitch);
-  };
-  
-  // Visual display for tuning - cents-based indicator
-  const renderCentsTuningIndicator = () => {
-    if (!tuningStatus || !detectedFrequency) return null;
-    
-    // Create a cents-based display with segments (-50 cents to +50 cents)
-    const segments = 21; // 10 segments on each side + center
-    
-    // Clamp cents difference to displayable range (±50 cents)
-    const clampedCents = Math.min(Math.max(tuningStatus.centsDiff, -50), 50);
-    
-    // Calculate which segment the needle should be in
-    const centerSegment = Math.floor(segments / 2);
-    const activeSegment = centerSegment + Math.round(clampedCents / 5);
-    
-    return (
-      <div className="mt-8 w-full px-0">
-        <div className="flex justify-between text-base mb-2 w-full">
-          <span>-50¢</span>
-          <span>-5¢</span>
-          <span className="font-semibold">0¢</span>
-          <span>+5¢</span>
-          <span>+50¢</span>
-        </div>
-        <div className="relative h-14 bg-gray-200 dark:bg-secondary-700 rounded-full overflow-hidden flex w-full">
-          {/* Generate all segments with equal width */}
-          {Array.from({ length: segments }).map((_, index) => {
-            // Determine segment color and style
-            let bgColor = "bg-gray-300 dark:bg-gray-600";
-            const widthPercent = 100 / segments; // Equal width for all segments
-            
-            // Calculate distance from center for coloring purposes
-            const distanceFromCenter = Math.abs(index - centerSegment);
-            
-            // Apply colors based on tuning precision
-            if (index === centerSegment) {
-              // Center segment (0¢)
-              bgColor = "bg-green-600 dark:bg-green-600";
-            }
-            else if (distanceFromCenter === 1) {
-              // Segments at ±5¢ (the in-tune threshold)
-              bgColor = "bg-green-400 dark:bg-green-700";
-            }
-            
-            // Highlight the active segment with a clear border
-            if (index === activeSegment) {
-              const baseColor = distanceFromCenter <= 1 
-                ? "bg-green-600" 
-                : tuningStatus.isTooHigh 
-                  ? "bg-red-600" 
-                  : "bg-blue-600";
-              
-              bgColor = baseColor;
-            }
-            
-            return (
-              <div 
-                key={index}
-                className={`h-full ${bgColor} ${index === activeSegment ? 'border-2 border-white dark:border-black' : ''}`}
-                style={{ 
-                  width: `${widthPercent}%`,
-                  transition: 'background-color 0.2s ease'
-                }}
-              />
-            );
-          })}
+  // Render tuning display
+  const renderTuningDisplay = () => {
+    if (!detectedPitch || !closestString || centsDifference === null) {
+      return (
+        <div style={{ minHeight: '350px' }}> {/* Fixed height container to prevent jumping */}
+          <p className="text-lg mb-4">Listening for notes...</p>
           
-          {/* Critical tuning threshold markers */}
-          <div className="absolute top-0 w-full h-2">
-            {/* Critical range: -3¢ */}
-            <div className="absolute left-[42.9%] h-full w-0.5 bg-black dark:bg-white opacity-30"></div>
-            {/* -5¢ mark - exactly 1 segment left of center */}
-            <div className="absolute left-[45.2%] h-full w-0.5 bg-black dark:bg-white opacity-50"></div>
-            {/* -2¢ critical precision */}
-            <div className="absolute left-[47.6%] h-full w-0.5 bg-green-700 dark:bg-green-400 opacity-70"></div>
-            {/* 0¢ mark - exactly at center */}
-            <div className="absolute left-[50%] h-full w-1 bg-green-700 dark:bg-green-400 opacity-90 transform -translate-x-1/2"></div>
-            {/* +2¢ critical precision */}
-            <div className="absolute left-[52.4%] h-full w-0.5 bg-green-700 dark:bg-green-400 opacity-70"></div>
-            {/* +5¢ mark - exactly 1 segment right of center */}
-            <div className="absolute left-[54.8%] h-full w-0.5 bg-black dark:bg-white opacity-50"></div>
-            {/* Critical range: +3¢ */}
-            <div className="absolute left-[57.1%] h-full w-0.5 bg-black dark:bg-white opacity-30"></div>
+          {/* Audio level meter with fixed height */}
+          <div className="mb-4">
+            <div className="text-sm mb-1">Microphone Input Level:</div>
+            <div className="h-6 w-full bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+              <div 
+                className="h-full bg-blue-500 dark:bg-blue-600 transition-all duration-100"
+                style={{ width: `${audioLevel}%` }}
+              ></div>
+            </div>
+            <div className="flex justify-between text-xs mt-1 text-gray-500">
+              <span>0%</span>
+              <span>25%</span>
+              <span>50%</span>
+              <span>75%</span>
+              <span>100%</span>
+            </div>
+            <div className="text-xs mt-2 text-gray-500" style={{ height: '80px' }}> {/* Fixed height for tips */}
+              <p>Play a single string clearly and wait for detection:</p>
+              <ul className="list-disc pl-5 mt-1">
+                <li>Hold your guitar close to the microphone</li>
+                <li>Play one string at a time with medium strength</li>
+                <li>Let the note ring clearly without background noise</li>
+              </ul>
+            </div>
           </div>
           
-          {/* Cents value display */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-base font-bold px-3 py-1 bg-white dark:bg-gray-800 bg-opacity-60 dark:bg-opacity-60 rounded-full">
-              {tuningStatus.centsDiff.toFixed(1)}¢
+          {/* Tuner information with fixed height */}
+          <div className="mt-6 p-3 border rounded border-gray-300 dark:border-gray-600" style={{ height: '100px' }}>
+            <div className="text-sm font-medium mb-2">Tuner Information:</div>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Frequency range: 75Hz - 500Hz (guitar strings)<br/>
+              Signal processing: Noise filtering + median analysis<br/>
+              Requires 3 consistent readings for stable display
+            </p>
+          </div>
+        </div>
+      );
+    }
+    
+    // Clamp cents for display (max ±50 cents)
+    const clampedCents = Math.max(-50, Math.min(50, centsDifference));
+    
+    // Calculate meter position (0-100%)
+    const meterPosition = ((clampedCents + 50) / 100) * 100;
+    
+    // Determine tuning status and instruction
+    let tuningInstruction;
+    let statusClass = "";
+    
+    if (Math.abs(centsDifference) <= 5) {
+      tuningInstruction = "In tune!";
+      statusClass = "text-green-600 dark:text-green-400 font-bold";
+    } else if (Math.abs(centsDifference) <= 15) {
+      // Close but needs adjustment
+      if (centsDifference < 0) {
+        tuningInstruction = `Tune up slightly (${Math.abs(centsDifference).toFixed(1)}¢)`;
+        statusClass = "text-yellow-600 dark:text-yellow-400";
+      } else {
+        tuningInstruction = `Tune down slightly (${centsDifference.toFixed(1)}¢)`;
+        statusClass = "text-yellow-600 dark:text-yellow-400";
+      }
+    } else {
+      // Needs significant adjustment
+      if (centsDifference < 0) {
+        tuningInstruction = `Tune up by ${Math.abs(centsDifference).toFixed(1)}¢`;
+        statusClass = "text-red-600 dark:text-red-400";
+      } else {
+        tuningInstruction = `Tune down by ${centsDifference.toFixed(1)}¢`;
+        statusClass = "text-red-600 dark:text-red-400";
+      }
+    }
+    
+    return (
+      <div className="mt-4 w-full" style={{ minHeight: '350px' }}> {/* Fixed height to prevent jumping */}
+        {/* Fixed height container for the note display */}
+        <div className="h-32 flex flex-col items-center justify-center">
+          <div className="text-4xl font-bold mb-1">{closestString.note}</div>
+          <div className="text-lg text-gray-600 dark:text-gray-300 mb-1">{closestString.string}</div>
+          {/* Fixed height for frequency display to avoid jumping */}
+          <div className="text-sm text-gray-500 dark:text-gray-400 h-6 flex items-center justify-center">
+            <span className="inline-block min-w-[80px] text-center">{detectedPitch.toFixed(1)} Hz</span>
+          </div>
+        </div>
+        
+        {/* Audio level meter with fixed height */}
+        <div className="mb-4 h-6">
+          <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
+            <div 
+              className="h-full bg-blue-500 dark:bg-blue-600 transition-all duration-100"
+              style={{ width: `${audioLevel}%` }}
+            ></div>
+          </div>
+        </div>
+        
+        {/* Cents display with fixed width and height */}
+        <div className="text-center mb-2 h-10 flex items-center justify-center">
+          <div className="inline-block min-w-[100px]">
+            <span className="text-xl font-bold px-4 py-1 bg-white dark:bg-gray-800 rounded-full">
+              {centsDifference.toFixed(1)}¢
             </span>
           </div>
         </div>
         
-        <div className="mt-3 text-lg text-center font-medium w-full">
-          {Math.abs(tuningStatus.centsDiff) <= 2
-            ? "Perfect! Your string is in perfect tune (±2¢)."
-            : Math.abs(tuningStatus.centsDiff) <= 3
-              ? "Very good! Your string is in critical range (±3¢)."
-              : Math.abs(tuningStatus.centsDiff) <= 5
-                ? "Good! Your string is in acceptable range (±5¢)."
-                : tuningStatus.isTooHigh 
-                  ? `Tune down by ${Math.abs(tuningStatus.centsDiff).toFixed(1)}¢` 
-                  : `Tune up by ${Math.abs(tuningStatus.centsDiff).toFixed(1)}¢`}
+        {/* Improved tuning meter - much clearer and larger */}
+        <div className="my-4">
+          {/* Labels with fixed spacing and width */}
+          <div className="flex justify-between text-xs mb-1 px-1">
+            <span className="w-8 text-center">-50¢</span>
+            <span className="w-8 text-center">-10¢</span>
+            <span className="w-8 text-center">-5¢</span>
+            <span className="w-8 text-center">-2¢</span>
+            <span className="w-8 text-center">0¢</span>
+            <span className="w-8 text-center">+2¢</span>
+            <span className="w-8 text-center">+5¢</span>
+            <span className="w-8 text-center">+10¢</span>
+            <span className="w-8 text-center">+50¢</span>
+          </div>
+          
+          {/* Meter - wider and taller */}
+          <div className="h-16 relative rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700" style={{ width: '100%' }}>
+            {/* Color zones - gray with green center */}
+            <div className="absolute inset-0 flex h-full">
+              {/* Each segment is exactly proportioned to the scale width */}
+              <div className="bg-gray-300 dark:bg-gray-600 h-full" style={{ width: '45%' }}></div>
+              <div className="bg-green-200 dark:bg-green-900 h-full" style={{ width: '5%' }}></div>
+              <div className="bg-green-500 dark:bg-green-600 h-full" style={{ width: '0%' }}></div>
+              <div className="bg-green-200 dark:bg-green-900 h-full" style={{ width: '5%' }}></div>
+              <div className="bg-gray-300 dark:bg-gray-600 h-full" style={{ width: '45%' }}></div>
+            </div>
+            
+            {/* Center marker (0¢) */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="h-full w-1 bg-white dark:bg-gray-200 absolute left-1/2 transform -translate-x-1/2"></div>
+            </div>
+            
+            {/* ±2 cent markers */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="h-full w-0.5 bg-white dark:bg-gray-300 bg-opacity-70 absolute" 
+                   style={{ left: 'calc(50% - 2%)' }}></div>
+              <div className="h-full w-0.5 bg-white dark:bg-gray-300 bg-opacity-70 absolute" 
+                   style={{ left: 'calc(50% + 2%)' }}></div>
+            </div>
+            
+            {/* ±5 cent markers */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="h-full w-0.5 bg-white dark:bg-gray-300 bg-opacity-70 absolute" 
+                   style={{ left: 'calc(50% - 5%)' }}></div>
+              <div className="h-full w-0.5 bg-white dark:bg-gray-300 bg-opacity-70 absolute" 
+                   style={{ left: 'calc(50% + 5%)' }}></div>
+            </div>
+            
+            {/* ±10 cent markers */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="h-full w-0.5 bg-white dark:bg-gray-300 bg-opacity-70 absolute" 
+                   style={{ left: 'calc(50% - 10%)' }}></div>
+              <div className="h-full w-0.5 bg-white dark:bg-gray-300 bg-opacity-70 absolute" 
+                   style={{ left: 'calc(50% + 10%)' }}></div>
+            </div>
+            
+            {/* Needle - thicker and more visible */}
+            <div 
+              className="absolute top-0 bottom-0 w-2 bg-white shadow-md z-10"
+              style={{ 
+                left: `${meterPosition}%`, 
+                transform: 'translateX(-50%)',
+                transition: 'left 0.1s ease-out'
+              }}
+            ></div>
+          </div>
+          
+          {/* Instruction with fixed height and width */}
+          <div className="text-center mt-4 h-8">
+            <div className="inline-block min-w-[200px] min-h-[32px]">
+              <span className={`text-lg font-medium ${statusClass}`}>{tuningInstruction}</span>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -403,47 +558,40 @@ const GuitarTuner: React.FC = () => {
     <div className="card p-6 bg-white dark:bg-secondary-800 shadow-md rounded-lg">
       <h2 className="text-xl font-bold mb-4">Guitar Tuner</h2>
       
+      {/* Error message */}
       {errorMessage && (
-        <div className="p-2 mb-4 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 rounded">
+        <div className="p-3 mb-4 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 rounded">
           {errorMessage}
         </div>
       )}
       
-      <div className="flex flex-col items-center justify-center">
+      {/* Main tuner area */}
+      <div className="flex flex-col items-center">
+        {/* Toggle button */}
         <button 
-          onClick={toggleMicrophone}
-          className={`flex items-center justify-center w-16 h-16 rounded-full mb-6 ${
+          onClick={toggleTuner}
+          className={`flex items-center justify-center w-16 h-16 rounded-full mb-4 ${
             isListening 
-              ? 'bg-red-500 hover:bg-red-600' 
-              : 'bg-primary-500 hover:bg-primary-600'
+              ? 'bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700' 
+              : 'bg-primary-500 hover:bg-primary-600 dark:bg-primary-600 dark:hover:bg-primary-700'
           } text-white transition-colors`}
-          aria-label={isListening ? "Stop listening" : "Start listening"}
+          aria-label={isListening ? "Stop tuner" : "Start tuner"}
         >
           {isListening ? <FaMicrophoneSlash size={24} /> : <FaMicrophone size={24} />}
         </button>
         
-        <div className="text-center">
-          {isListening ? (
-            <>
-              <h3 className="text-4xl font-bold mb-2">
-                {detectedNote || "-"}
-              </h3>
-              {detectedFrequency && (
-                <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-                  {detectedFrequency.toFixed(2)} Hz
-                </p>
-              )}
-              {renderCentsTuningIndicator()}
-            </>
-          ) : (
+        {/* Pitch display area */}
+        <div className="text-center mb-6" style={{ minHeight: '240px' }}>
+          {isListening ? renderTuningDisplay() : (
             <p className="text-lg">Tap the microphone to start tuning</p>
           )}
         </div>
       </div>
       
-      <div className="mt-8">
-        <div className="mb-4 w-full">
-          <label htmlFor="tuning-select" className="block mb-2 font-medium text-lg">Select Tuning:</label>
+      {/* Tuning selection */}
+      <div className="mt-6">
+        <div className="mb-4">
+          <label htmlFor="tuning-select" className="block mb-2 font-medium">Tuning:</label>
           <div className="relative">
             <select
               id="tuning-select"
@@ -453,12 +601,11 @@ const GuitarTuner: React.FC = () => {
               style={{ 
                 WebkitAppearance: "none", 
                 MozAppearance: "none", 
-                appearance: "none",
-                backgroundImage: "none"
+                appearance: "none"
               }}
               disabled={isListening}
             >
-              {Object.keys(TUNINGS).map((tuning) => (
+              {Object.keys(GUITAR_TUNINGS).map((tuning) => (
                 <option key={tuning} value={tuning}>
                   {tuning}
                 </option>
@@ -472,18 +619,19 @@ const GuitarTuner: React.FC = () => {
           </div>
         </div>
         
-        <h3 className="font-medium mb-3 text-lg w-full">{selectedTuning} Tuning:</h3>
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-6 w-full">
-          {TUNINGS[selectedTuning].map((string, index) => (
+        {/* Tuning strings display */}
+        <h3 className="font-medium mb-3">String Reference:</h3>
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+          {GUITAR_TUNINGS[selectedTuning].map((string, index) => (
             <div 
               key={index} 
               className={`text-center p-3 rounded ${
-                isListening && closestString.name === string.name 
-                  ? 'bg-primary-100 dark:bg-primary-900 border-2 border-primary-500' 
+                closestString && closestString.note === string.note
+                  ? 'bg-primary-100 dark:bg-primary-900 border-2 border-primary-500 dark:border-primary-400' 
                   : 'bg-gray-100 dark:bg-secondary-700'
               }`}
             >
-              <div className="font-bold text-lg">{string.name}</div>
+              <div className="font-bold text-lg">{string.note}</div>
               <div className="text-xs text-gray-500 dark:text-gray-400">{string.frequency.toFixed(1)} Hz</div>
             </div>
           ))}
