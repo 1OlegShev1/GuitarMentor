@@ -10,7 +10,7 @@ const FRET_COUNT = 24;
 
 // All music notes
 const ALL_NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-const NATURAL_NOTES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+// const NATURAL_NOTES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 
 // Note indices in the ALL_NOTES array for each open string
 const OPEN_STRING_INDICES = [

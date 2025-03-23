@@ -70,6 +70,7 @@ const CHORD_SHAPES = {
 const CHORD_KEYS = ['C', 'A', 'G', 'E', 'D'] as const;
 type ChordKey = typeof CHORD_KEYS[number];
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface CagedSystemDisplayProps {
   // Add props as needed
 }
@@ -203,7 +204,7 @@ const CagedSystemDisplay: React.FC<CagedSystemDisplayProps> = () => {
               if (adjustedFret < startFret || adjustedFret > startFret + 4) return null;
               
               const stringIndex = 6 - position.string; // Convert to zero-indexed
-              const fretIndex = position.fret; // Relative to the startFret
+              // const fretIndex = position.fret; // Relative to the startFret
               
               return (
                 <div

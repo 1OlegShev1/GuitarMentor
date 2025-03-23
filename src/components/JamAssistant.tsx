@@ -122,6 +122,7 @@ const PROGRESSION_SUGGESTIONS: ProgressionSuggestions = {
 type ProgressionKey = keyof typeof PROGRESSION_SUGGESTIONS;
 type SongPart = 'verse' | 'chorus' | 'bridge';
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface JamAssistantProps {
   // Add props as needed
 }
@@ -258,7 +259,7 @@ const JamAssistant: React.FC<JamAssistantProps> = () => {
           {selectedProgression === 'custom' && (
             <div>
               <label htmlFor="custom-progression" className="block text-sm font-medium mb-2">
-                Enter your progression (e.g., "Cmaj7-Am7-Fmaj7-G7"):
+                Enter your progression (e.g., &quot;Cmaj7-Am7-Fmaj7-G7&quot;):
               </label>
               <input
                 id="custom-progression"

@@ -60,7 +60,7 @@ export default function ProgressionsPage() {
             <div>
               <h3 className="font-medium text-primary-600 mb-2">I - V - vi - IV</h3>
               <p className="text-sm text-secondary-600 dark:text-secondary-300 mb-1">
-                Known as the "pop-punk progression" or "Axis of Awesome" progression, used in hundreds of pop songs.
+                Known as the &quot;pop-punk progression&quot; or &quot;Axis of Awesome&quot; progression, used in hundreds of pop songs.
               </p>
               <p className="text-sm text-secondary-600 dark:text-secondary-300">
                 Example in C major: C - G - Am - F
@@ -80,7 +80,7 @@ export default function ProgressionsPage() {
             <div>
               <h3 className="font-medium text-primary-600 mb-2">I - vi - IV - V</h3>
               <p className="text-sm text-secondary-600 dark:text-secondary-300 mb-1">
-                The classic "doo-wop" progression used in countless early rock and pop songs.
+                The classic &quot;doo-wop&quot; progression used in countless early rock and pop songs.
               </p>
               <p className="text-sm text-secondary-600 dark:text-secondary-300">
                 Example in A major: A - F#m - D - E

@@ -280,7 +280,7 @@ const GuitarTuner: React.FC = () => {
       microphoneStreamRef.current = stream;
       
       // Create audio context
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioContext = window.AudioContext || ((window as { webkitAudioContext?: typeof window.AudioContext }).webkitAudioContext);
       if (!AudioContext) {
         throw new Error('Web Audio API is not supported in this browser.');
       }
@@ -313,15 +313,19 @@ const GuitarTuner: React.FC = () => {
       setIsListening(true);
       detectPitch();
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       let message = 'Error accessing microphone';
       
-      if (error.name === 'NotAllowedError') {
-        message = 'Microphone access was denied. Please allow microphone permissions in your browser.';
-      } else if (error.name === 'NotFoundError') {
-        message = 'No microphone found. Please connect a microphone.';
-      } else if (error.message) {
-        message = error.message;
+      if (error instanceof DOMException) {
+        if (error.name === 'NotAllowedError') {
+          message = 'Microphone access was denied. Please allow microphone permissions in your browser.';
+        } else if (error.name === 'NotFoundError') {
+          message = 'No microphone found. Please connect a microphone.';
+        } else if (error.message) {
+          message = error.message;
+        }
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        message = String(error.message);
       }
       
       setErrorMessage(message);

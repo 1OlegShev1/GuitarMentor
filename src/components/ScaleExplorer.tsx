@@ -64,6 +64,7 @@ const OPEN_STRING_INDICES = [
   7, // E (index 7 in ALL_NOTES)
 ];
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface ScaleExplorerProps {
   // Add props as needed
 }
@@ -71,8 +72,8 @@ interface ScaleExplorerProps {
 const ScaleExplorer: React.FC<ScaleExplorerProps> = () => {
   const [rootNote, setRootNote] = useState<string>('A');
   const [scaleType, setScaleType] = useState<ScaleType>('minorPentatonic');
-  const [position, setPosition] = useState<number>(0);
-  const [fretCount, setFretCount] = useState<number>(12);
+  const [/*position,*/ /*setPosition*/] = useState<number>(0);
+  const [fretCount, /*setFretCount*/] = useState<number>(24);
   const [startFret, setStartFret] = useState<number>(0);
 
   // Calculate the notes in the selected scale
@@ -271,7 +272,7 @@ const ScaleExplorer: React.FC<ScaleExplorerProps> = () => {
         <div className="p-4 bg-secondary-50 dark:bg-secondary-800/50 rounded-lg">
           <h3 className="font-semibold mb-2">Scale Formula</h3>
           <div className="flex flex-wrap gap-2">
-            {SCALE_TYPES[scaleType].intervals.map((interval, idx) => {
+            {SCALE_TYPES[scaleType].intervals.map((interval) => {
               let degreeName = '';
               switch (interval) {
                 case 0: degreeName = '1 (Root)'; break;

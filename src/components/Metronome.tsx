@@ -21,6 +21,21 @@ interface MetronomeSettings {
 
 const STORAGE_KEY = 'guitar-mentor-metronome-settings';
 
+// Type for Tone.js synth
+interface ToneSynth {
+  dispose: () => void;
+  triggerAttackRelease: (note: string | number, duration: string, time?: number, velocity?: number) => void;
+  volume: { value: number };
+}
+
+interface MetalSynth {
+  dispose: () => void;
+  triggerAttackRelease: (duration: string, time?: number, velocity?: number) => void;
+  volume: { value: number };
+}
+
+type SynthType = ToneSynth | MetalSynth;
+
 const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
   // Load saved settings or use defaults
   const loadSavedSettings = (): MetronomeSettings => {
@@ -63,15 +78,15 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
   const [currentBeat, setCurrentBeat] = useState(-1);
   const [saveMessage, setSaveMessage] = useState('');
   
-  const metronomeRef = useRef<any>(null);
-  const tickSoundRef = useRef<any>(null);
-  const accentSoundRef = useRef<any>(null);
+  const metronomeRef = useRef<Tone.Loop | null>(null);
+  const tickSoundRef = useRef<SynthType | null>(null);
+  const accentSoundRef = useRef<SynthType | null>(null);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const saveMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sound configuration based on selected sound type
-  const getSoundConfig = () => {
-    switch(soundType) {
+  const getSoundConfig = (soundTypeToUse: SoundType = soundType) => {
+    switch(soundTypeToUse) {
       case 'digital':
         return {
           regular: { type: 'square', note: 'A4' },
@@ -98,30 +113,12 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
 
   // Initialize Tone.js metronome
   useEffect(() => {
-    // Only create new sounds if we're not playing, otherwise handled by handleSoundTypeChange
+    // Only create new sounds if we're not playing
     if (!isPlaying) {
       updateSoundEngine(soundType);
     }
-    
-    // Clean up on unmount
-    return () => {
-      if (metronomeRef.current) {
-        metronomeRef.current.dispose();
-      }
-      if (tapTimeoutRef.current) {
-        clearTimeout(tapTimeoutRef.current);
-      }
-      if (saveMessageTimeoutRef.current) {
-        clearTimeout(saveMessageTimeoutRef.current);
-      }
-      if (tickSoundRef.current) {
-        tickSoundRef.current.dispose();
-      }
-      if (accentSoundRef.current) {
-        accentSoundRef.current.dispose();
-      }
-    };
-  }, [soundType, tickVolume, isPlaying]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying, soundType]);
 
   // Update metronome when tempo changes
   useEffect(() => {
@@ -131,7 +128,8 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
     }
     // Update the input field when tempo changes from buttons
     setTempoBpmInput(tempo.toString());
-  }, [tempo, timeSignature, isPlaying]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying, tempo, timeSignature, tickVolume]);
 
   // Reset currentBeat when metronome stops
   useEffect(() => {
@@ -140,53 +138,44 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
     }
   }, [isPlaying]);
 
+  // Play sound based on synth type
+  const playSound = (synth: SynthType, duration: string, time: number, velocity: number) => {
+    if (soundType === 'drums') {
+      (synth as MetalSynth).triggerAttackRelease(duration, time, velocity);
+    } else {
+      const note = synth === tickSoundRef.current ? 'G4' : 'C5';
+      (synth as ToneSynth).triggerAttackRelease(note, duration, time, velocity);
+    }
+  };
+
+  // Start the metronome
   const startMetronome = async () => {
     try {
-      // Make sure Tone.js is started (needed for browsers)
       await Tone.start();
-      
-      // Clear any existing metronome
       if (metronomeRef.current) {
-        metronomeRef.current.dispose();
+        stopMetronome();
       }
-      
-      // Reset the beat counter before starting
       setCurrentBeat(-1);
       
-      const config = getSoundConfig();
-      
-      // Create a new repeating event
+      Tone.Transport.bpm.value = tempo;
+
       let count = 0;
       metronomeRef.current = new Tone.Loop((time) => {
-        // Play sound on the current beat
         const beatIndex = count % timeSignature;
         
-        // Schedule updates for visual and audio together
         Tone.Draw.schedule(() => {
           setCurrentBeat(beatIndex);
         }, time);
         
-        // Play appropriate sound based on beat position
-        if (beatIndex === 0) {
-          if (soundType === 'drums') {
-            // For drums, just trigger without note
-            accentSoundRef.current.triggerAttackRelease('16n', time, 1);
-          } else {
-            accentSoundRef.current.triggerAttackRelease(config.accent.note, '32n', time, 0.9);
-          }
-        } else {
-          if (soundType === 'drums') {
-            // For drums, just trigger without note
-            tickSoundRef.current.triggerAttackRelease('32n', time, 0.7);
-          } else {
-            tickSoundRef.current.triggerAttackRelease(config.regular.note, '32n', time, 0.7);
-          }
+        if (beatIndex === 0 && accentSoundRef.current) {
+          playSound(accentSoundRef.current, '32n', time, 0.9);
+        } else if (tickSoundRef.current) {
+          playSound(tickSoundRef.current, '32n', time, 0.7);
         }
         
         count++;
       }, `${60 / tempo}n`).start(0);
       
-      // Start the Transport
       Tone.Transport.start();
     } catch (error) {
       console.error("Error starting metronome:", error);
@@ -308,7 +297,8 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
 
   // Function to update sound engine without stopping metronome
   const updateSoundEngine = (soundTypeToUse: SoundType) => {
-    const config = getSoundConfig();
+    // Get config for the new sound type, not the current one
+    const config = getSoundConfig(soundTypeToUse);
     
     // Dispose of old synths if they exist
     if (tickSoundRef.current) {
@@ -320,27 +310,45 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
     
     // Create new synths with the new sound type
     if (soundTypeToUse === 'drums') {
-      // Use noise synth for drum sounds
-      tickSoundRef.current = new Tone.NoiseSynth({
-        noise: { type: 'white' },
-        envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 }
-      }).toDestination();
+      // Create hi-hat sounds using MetalSynth
+      tickSoundRef.current = new Tone.MetalSynth({
+        envelope: {
+          attack: 0.001,
+          decay: 0.1,
+          release: 0.01
+        },
+        harmonicity: 5.1,
+        modulationIndex: 32,
+        resonance: 4000,
+        octaves: 1.5
+      }).toDestination() as unknown as MetalSynth;
       
-      accentSoundRef.current = new Tone.NoiseSynth({
-        noise: { type: 'white' },
-        envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
-      }).toDestination();
+      accentSoundRef.current = new Tone.MetalSynth({
+        envelope: {
+          attack: 0.001,
+          decay: 0.15,
+          release: 0.01
+        },
+        harmonicity: 5.1,
+        modulationIndex: 32,
+        resonance: 4000,
+        octaves: 1.5
+      }).toDestination() as unknown as MetalSynth;
+
+      // Set volumes
+      (tickSoundRef.current as any).volume.value = Tone.gainToDb(tickVolume * 0.7);
+      (accentSoundRef.current as any).volume.value = Tone.gainToDb(tickVolume);
     } else {
       // Use regular synth for other sound types
       tickSoundRef.current = new Tone.Synth({
-        oscillator: { type: config.regular.type as any },
+        oscillator: { type: config.regular.type } as any,
         envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
-      }).toDestination();
+      }).toDestination() as ToneSynth;
       
       accentSoundRef.current = new Tone.Synth({
-        oscillator: { type: config.accent.type as any },
+        oscillator: { type: config.accent.type } as any,
         envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.1 }
-      }).toDestination();
+      }).toDestination() as ToneSynth;
     }
     
     // Apply volume setting
@@ -526,7 +534,7 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
             <option value="classic">Classic</option>
             <option value="digital">Digital</option>
             <option value="wooden">Wooden</option>
-            <option value="drums">Drums</option>
+            <option value="drums">Hi-Hat</option>
           </select>
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 dark:text-gray-400">
             <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">

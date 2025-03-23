@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import FretboardDisplay from '@/components/FretboardDisplay';
 
 export default function FretboardPage() {
-  const [activePracticeMode, setActivePracticeMode] = useState<boolean>(false);
+  const [activePracticeMode/*, setActivePracticeMode*/] = useState<boolean>(false);
   const fretboardRef = useRef<HTMLDivElement>(null);
 
   return (

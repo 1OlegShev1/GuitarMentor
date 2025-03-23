@@ -85,7 +85,7 @@ const NUMERAL_TO_INDEX: Record<string, number> = {
   'vii°': 6,
 };
 
-// Interface for the component props
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface ChordProgressionsProps {
   // Add props as needed
 }
