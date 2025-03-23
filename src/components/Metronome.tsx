@@ -53,7 +53,7 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
   const [timeSignature, setTimeSignature] = useState(savedSettings.timeSignature);
   const [tapTimes, setTapTimes] = useState<number[]>([]);
   const [isTapping, setIsTapping] = useState(false);
-  const [currentBeat, setCurrentBeat] = useState(0);
+  const [currentBeat, setCurrentBeat] = useState(-1);
   const [saveMessage, setSaveMessage] = useState('');
   
   const metronomeRef = useRef<any>(null);
@@ -114,7 +114,7 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
   // Reset currentBeat when metronome stops
   useEffect(() => {
     if (!isPlaying) {
-      setCurrentBeat(0);
+      setCurrentBeat(-1);
     }
   }, [isPlaying]);
 
@@ -127,20 +127,26 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
       metronomeRef.current.dispose();
     }
     
+    // Reset the beat counter before starting
+    setCurrentBeat(-1);
+    
     // Create a new repeating event
     let count = 0;
     metronomeRef.current = new Tone.Loop((time) => {
-      // Play accent on first beat, regular tick on others
-      if (count % timeSignature === 0) {
+      // Play sound on the current beat
+      const beatIndex = count % timeSignature;
+      
+      // Schedule updates for visual and audio together
+      Tone.Draw.schedule(() => {
+        setCurrentBeat(beatIndex);
+      }, time);
+      
+      // Play appropriate sound based on beat position
+      if (beatIndex === 0) {
         accentSoundRef.current.triggerAttackRelease('C5', '32n', time, 0.9);
       } else {
         tickSoundRef.current.triggerAttackRelease('G4', '32n', time, 0.7);
       }
-      
-      // Schedule beat update for visual indicator
-      Tone.Draw.schedule(() => {
-        setCurrentBeat(count % timeSignature);
-      }, time);
       
       count++;
     }, `${60 / tempo}n`).start(0);
