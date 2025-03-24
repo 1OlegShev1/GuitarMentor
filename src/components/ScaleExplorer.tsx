@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 // All music notes
 const ALL_NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+// Note: A is at index 9 in the ALL_NOTES array
 
 // Common scale types with their interval patterns
 const SCALE_TYPES = {
@@ -37,19 +38,193 @@ const SCALE_TYPES = {
     intervals: [0, 2, 3, 5, 7, 8, 11],
     description: 'Natural minor with a raised 7th degree. Common in classical and metal.',
   },
+  melodicMinor: {
+    name: 'Melodic Minor',
+    intervals: [0, 2, 3, 5, 7, 9, 11],
+    description: 'Minor scale with raised 6th and 7th degrees ascending.',
+  },
   dorian: {
     name: 'Dorian',
     intervals: [0, 2, 3, 5, 7, 9, 10],
     description: 'A minor scale with a raised 6th, common in jazz and rock.',
+  },
+  phrygian: {
+    name: 'Phrygian',
+    intervals: [0, 1, 3, 5, 7, 8, 10],
+    description: 'Minor scale with a flat 2nd, has a Spanish/Middle Eastern sound.',
+  },
+  lydian: {
+    name: 'Lydian',
+    intervals: [0, 2, 4, 6, 7, 9, 11],
+    description: 'Major scale with a raised 4th, sounds bright and spacey.',
   },
   mixolydian: {
     name: 'Mixolydian',
     intervals: [0, 2, 4, 5, 7, 9, 10],
     description: 'A major scale with a flatted 7th, common in blues and rock.',
   },
+  locrian: {
+    name: 'Locrian',
+    intervals: [0, 1, 3, 5, 6, 8, 10],
+    description: 'A diminished scale with a flat 2nd and flat 5th.',
+  },
+  wholeTone: {
+    name: 'Whole Tone',
+    intervals: [0, 2, 4, 6, 8, 10],
+    description: 'A symmetrical scale comprised solely of whole steps.',
+  },
+  diminished: {
+    name: 'Diminished (Half-Whole)',
+    intervals: [0, 1, 3, 4, 6, 7, 9, 10],
+    description: 'An 8-note symmetrical scale alternating half and whole steps.',
+  },
 };
 
 type ScaleType = keyof typeof SCALE_TYPES;
+
+// Scale positions - key patterns that highlight common fingering positions
+interface ScalePosition {
+  name: string;
+  startFret: number;
+  patternFrets: number[][];
+}
+
+type ScalePositions = {
+  [key in ScaleType]?: ScalePosition[];
+};
+
+const SCALE_POSITIONS: ScalePositions = {
+  minorPentatonic: [
+    { // Position 1 (E shape)
+      name: 'Position 1 (E shape)',
+      startFret: 0,
+      patternFrets: [
+        [0, 3], // E string (6th)
+        [0, 3], // A string (5th)
+        [0, 2], // D string (4th)
+        [0, 2], // G string (3rd)
+        [0, 3], // B string (2nd)
+        [0, 3], // E string (1st)
+      ]
+    },
+    { // Position 2 (A shape)
+      name: 'Position 2 (A shape)',
+      startFret: 3,
+      patternFrets: [
+        [3, 5], // E string
+        [3, 5], // A string
+        [2, 5], // D string
+        [2, 5], // G string
+        [3, 5], // B string
+        [3, 5], // E string
+      ]
+    },
+    { // Position 3 (C shape)
+      name: 'Position 3 (C shape)',
+      startFret: 5,
+      patternFrets: [
+        [5, 8], // E string
+        [5, 8], // A string
+        [5, 7], // D string
+        [5, 7], // G string
+        [5, 8], // B string
+        [5, 8], // E string
+      ]
+    },
+    { // Position 4 (D shape)
+      name: 'Position 4 (D shape)',
+      startFret: 7,
+      patternFrets: [
+        [8, 10], // E string
+        [7, 10], // A string
+        [7, 10], // D string
+        [7, 9], // G string
+        [8, 10], // B string
+        [8, 10], // E string
+      ]
+    },
+    { // Position 5 (G shape)
+      name: 'Position 5 (G shape)',
+      startFret: 10,
+      patternFrets: [
+        [10, 12], // E string
+        [10, 12], // A string
+        [10, 12], // D string
+        [9, 12], // G string
+        [10, 12], // B string
+        [10, 12], // E string
+      ]
+    },
+  ],
+  major: [
+    { // Major Position 1
+      name: 'Position 1',
+      startFret: 0,
+      patternFrets: [
+        [0, 2, 3], // E string
+        [0, 2, 3], // A string
+        [0, 2], // D string
+        [0, 2], // G string
+        [0, 2, 3], // B string
+        [0, 2, 3], // E string
+      ]
+    },
+    { // Major Position 2
+      name: 'Position 2',
+      startFret: 2,
+      patternFrets: [
+        [3, 5], // E string
+        [3, 5], // A string
+        [2, 4, 5], // D string
+        [2, 4], // G string
+        [3, 5], // B string
+        [3, 5], // E string
+      ]
+    },
+  ],
+  minor: [
+    { // Minor Position 1
+      name: 'Position 1',
+      startFret: 0,
+      patternFrets: [
+        [0, 3], // E string
+        [0, 2, 3], // A string
+        [0, 2], // D string
+        [0, 2], // G string
+        [0, 3], // B string
+        [0, 3], // E string
+      ]
+    },
+  ],
+  blues: [
+    { // Blues Position 1
+      name: 'Position 1',
+      startFret: 0,
+      patternFrets: [
+        [0, 3], // E string
+        [0, 3], // A string
+        [0, 2], // D string
+        [0, 1, 2], // G string (added blue note)
+        [0, 3], // B string
+        [0, 3], // E string
+      ]
+    },
+  ],
+  majorPentatonic: [
+    { // Major Pentatonic Position 1
+      name: 'Position 1',
+      startFret: 0,
+      patternFrets: [
+        [0, 2], // E string
+        [0, 2], // A string
+        [0, 2], // D string
+        [0, 2], // G string
+        [0, 2], // B string
+        [0, 2], // E string
+      ]
+    },
+  ],
+};
 
 // Standard guitar tuning (from 6th string to 1st)
 const STANDARD_TUNING = ['E', 'A', 'D', 'G', 'B', 'E'];
@@ -72,8 +247,8 @@ interface ScaleExplorerProps {
 const ScaleExplorer: React.FC<ScaleExplorerProps> = () => {
   const [rootNote, setRootNote] = useState<string>('A');
   const [scaleType, setScaleType] = useState<ScaleType>('minorPentatonic');
-  const [/*position,*/ /*setPosition*/] = useState<number>(0);
-  const [fretCount, /*setFretCount*/] = useState<number>(24);
+  const [position, setPosition] = useState<number>(0); // 0 means no specific position
+  const [fretCount, /*setFretCount*/] = useState<number>(12); // Show 12 frets at a time
   const [startFret, setStartFret] = useState<number>(0);
 
   // Calculate the notes in the selected scale
@@ -106,6 +281,67 @@ const ScaleExplorer: React.FC<ScaleExplorerProps> = () => {
     return getNoteAtPosition(stringIndex, fret) === rootNote;
   };
 
+  // Check if a note is part of the currently highlighted position pattern
+  const isInHighlightedPattern = (stringIndex: number, fret: number): boolean => {
+    if (position === 0 || !SCALE_POSITIONS[scaleType]) {
+      return false;
+    }
+    
+    const patternPositions = SCALE_POSITIONS[scaleType];
+    if (!patternPositions || !patternPositions[position - 1]) {
+      return false;
+    }
+    
+    const currentPattern = patternPositions[position - 1];
+    const rootIndex = ALL_NOTES.indexOf(rootNote);
+    
+    // A is at index 9 in the ALL_NOTES array, which is the reference for patterns
+    const patternShift = rootIndex - 9; 
+    
+    // Relative position for this pattern
+    // We calculate where the pattern should be for this root note
+    const positionStartFret = Math.max(0, currentPattern.startFret + patternShift);
+    
+    // Now let's check if this fret is part of the pattern
+    // We use actual fret numbers that are relative to the current root note
+    for (let i = 0; i < currentPattern.patternFrets[stringIndex]?.length || 0; i++) {
+      const patternFret = currentPattern.patternFrets[stringIndex][i];
+      const actualFret = positionStartFret + (patternFret - currentPattern.startFret);
+      
+      if (fret === actualFret) {
+        return true;
+      }
+    }
+    
+    return false;
+  };
+  
+  // Get available positions for the current scale type
+  const getAvailablePositions = () => {
+    if (SCALE_POSITIONS[scaleType]) {
+      return SCALE_POSITIONS[scaleType]!.map((pos, idx) => ({ id: idx + 1, name: pos.name }));
+    }
+    return [];
+  };
+  
+  const availablePositions = getAvailablePositions();
+  const hasPositions = availablePositions.length > 0;
+
+  useEffect(() => {
+    // Reset position when scale type changes
+    setPosition(0);
+  }, [scaleType]);
+
+  useEffect(() => {
+    // If position is selected, ensure it's valid for the current scale type
+    if (position > 0) {
+      const positions = SCALE_POSITIONS[scaleType];
+      if (!positions || position > positions.length) {
+        setPosition(0); // Reset to all positions if current position is invalid
+      }
+    }
+  }, [scaleType, position]);
+
   return (
     <div className="w-full">
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -114,7 +350,20 @@ const ScaleExplorer: React.FC<ScaleExplorerProps> = () => {
           <div className="relative inline-block">
             <select 
               value={rootNote}
-              onChange={(e) => setRootNote(e.target.value)}
+              onChange={(e) => {
+                setRootNote(e.target.value);
+                // When root changes, we may need to adjust the fretboard view
+                if (position > 0) {
+                  const posPattern = SCALE_POSITIONS[scaleType]?.[position - 1];
+                  if (posPattern) {
+                    const rootIndex = ALL_NOTES.indexOf(e.target.value);
+                    const patternShift = rootIndex - 9; // A is reference at index 9
+                    // Set fret range to make pattern visible
+                    const adjustedStartFret = Math.max(0, posPattern.startFret + patternShift);
+                    setStartFret(Math.min(12, adjustedStartFret));
+                  }
+                }
+              }}
               className="block w-full bg-white dark:bg-secondary-800 border border-secondary-300 dark:border-secondary-600 rounded-md px-3 pr-8 py-1 focus:outline-none"
               style={{ 
                 WebkitAppearance: "none", 
@@ -138,7 +387,10 @@ const ScaleExplorer: React.FC<ScaleExplorerProps> = () => {
           <div className="relative inline-block">
             <select 
               value={scaleType}
-              onChange={(e) => setScaleType(e.target.value as ScaleType)}
+              onChange={(e) => {
+                setScaleType(e.target.value as ScaleType);
+                setPosition(0); // Reset position when scale changes
+              }}
               className="block w-full bg-white dark:bg-secondary-800 border border-secondary-300 dark:border-secondary-600 rounded-md px-3 pr-8 py-1 focus:outline-none"
               style={{ 
                 WebkitAppearance: "none", 
@@ -157,6 +409,50 @@ const ScaleExplorer: React.FC<ScaleExplorerProps> = () => {
               </svg>
             </div>
           </div>
+
+          {hasPositions && (
+            <>
+              <label className="text-sm font-medium ml-4">Position:</label>
+              <div className="relative inline-block">
+                <select
+                  value={position}
+                  onChange={(e) => {
+                    const newPosition = parseInt(e.target.value, 10);
+                    setPosition(newPosition);
+                    
+                    // Automatically adjust fretboard view to show the selected position
+                    if (newPosition > 0 && SCALE_POSITIONS[scaleType] && SCALE_POSITIONS[scaleType]![newPosition - 1]) {
+                      const posPattern = SCALE_POSITIONS[scaleType]![newPosition - 1];
+                      const rootIndex = ALL_NOTES.indexOf(rootNote);
+                      const patternShift = rootIndex - 9; // Adjust for root note
+                      
+                      // Adjust for the root note
+                      const adjustedStartFret = Math.max(0, posPattern.startFret + patternShift);
+                      // Ensure we don't go past maximum fret position
+                      setStartFret(Math.min(12, adjustedStartFret));
+                    }
+                  }}
+                  className="block w-full bg-white dark:bg-secondary-800 border border-secondary-300 dark:border-secondary-600 rounded-md px-3 pr-8 py-1 focus:outline-none"
+                  style={{ 
+                    WebkitAppearance: "none", 
+                    MozAppearance: "none", 
+                    appearance: "none",
+                    backgroundImage: "none"
+                  }}
+                >
+                  <option value="0">All Positions</option>
+                  {availablePositions.map((pos: {id: number, name: string}) => (
+                    <option key={pos.id} value={pos.id}>{pos.name}</option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500 dark:text-gray-400">
+                  <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                  </svg>
+                </div>
+              </div>
+            </>
+          )}
         </div>
         
         <div className="flex items-center space-x-2">
@@ -211,60 +507,69 @@ const ScaleExplorer: React.FC<ScaleExplorerProps> = () => {
             })}
           </div>
 
-          {/* String rows */}
-          {STANDARD_TUNING.map((stringNote, stringIndex) => (
-            <div
-              key={`string-${stringIndex}`}
-              className="flex border-b border-secondary-200 dark:border-secondary-700 last:border-b-0"
-            >
-              {/* String name */}
-              <div className="w-10 flex-shrink-0 flex items-center justify-center font-semibold text-primary-700 dark:text-primary-300">
-                {stringNote}
-              </div>
+          {/* String rows - 6th string (Low E) at the top, 1st string (High E) at the bottom */}
+          {[0, 1, 2, 3, 4, 5].map((index) => {
+            // Get correct tuning for this string (0=Low E, 5=High E)
+            const stringNote = STANDARD_TUNING[index];
+            const stringIndex = index;
+            
+            return (
+              <div
+                key={`string-${stringIndex}`}
+                className="flex border-b border-secondary-200 dark:border-secondary-700 last:border-b-0"
+              >
+                {/* String name */}
+                <div className="w-10 flex-shrink-0 flex items-center justify-center font-semibold text-primary-700 dark:text-primary-300">
+                  {stringNote}
+                </div>
 
-              {/* Frets for this string */}
-              {Array.from({ length: fretCount + 1 }).map((_, fretNum) => {
-                const currentFret = startFret + fretNum;
-                if (currentFret > 24) return null;
-                
-                const inScale = isNoteInScale(stringIndex, currentFret);
-                const isRoot = isRootNote(stringIndex, currentFret);
-                const note = getNoteAtPosition(stringIndex, currentFret);
-                
-                return (
-                  <div
-                    key={`string-${stringIndex}-fret-${fretNum}`}
-                    className={`flex-1 flex items-center justify-center min-h-[40px] ${
-                      currentFret === 0 ? 'bg-secondary-100 dark:bg-secondary-700/50' : ''
-                    }`}
-                  >
-                    {inScale && (
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm
-                          ${
-                            isRoot
-                              ? 'bg-primary-600 text-white'
-                              : 'bg-secondary-200 dark:bg-secondary-700 text-secondary-800 dark:text-secondary-200'
-                          }
-                        `}
-                      >
-                        {note}
-                      </div>
-                    )}
-                    
-                    {/* Fret markers at traditional positions */}
-                    {stringIndex === 0 && [3, 5, 7, 9, 12, 15, 17, 19, 21, 24].includes(currentFret) && (
-                      <div className="absolute -top-1 inset-x-0 flex justify-center">
-                        <div className={`w-2 h-2 rounded-full ${
-                          [12, 24].includes(currentFret) ? 'bg-primary-500' : 'bg-secondary-400'
-                        }`}></div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+                {/* Frets for this string */}
+                {Array.from({ length: fretCount + 1 }).map((_, fretNum) => {
+                  const currentFret = startFret + fretNum;
+                  if (currentFret > 24) return null;
+                  
+                  const inScale = isNoteInScale(stringIndex, currentFret);
+                  const isRoot = isRootNote(stringIndex, currentFret);
+                  const note = getNoteAtPosition(stringIndex, currentFret);
+                  const inPattern = isInHighlightedPattern(stringIndex, currentFret);
+                  
+                  return (
+                    <div
+                      key={`string-${stringIndex}-fret-${fretNum}`}
+                      className={`flex-1 flex items-center justify-center min-h-[40px] ${
+                        currentFret === 0 ? 'bg-secondary-100 dark:bg-secondary-700/50' : ''
+                      }`}
+                    >
+                      {inScale && (
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm
+                            ${
+                              isRoot
+                                ? 'bg-primary-600 text-white'
+                                : inPattern
+                                  ? 'bg-yellow-400 text-black border-[3px] border-orange-500 dark:bg-yellow-500 dark:border-yellow-300' 
+                                  : 'bg-secondary-200 dark:bg-secondary-700 text-secondary-800 dark:text-secondary-200'
+                            }
+                          `}
+                        >
+                          {note}
+                        </div>
+                      )}
+                      
+                      {/* Fret markers at traditional positions */}
+                      {stringIndex === 0 && [3, 5, 7, 9, 12, 15, 17, 19, 21, 24].includes(currentFret) && (
+                        <div className="absolute -top-1 inset-x-0 flex justify-center">
+                          <div className={`w-2 h-2 rounded-full ${
+                            [12, 24].includes(currentFret) ? 'bg-primary-500' : 'bg-secondary-400'
+                          }`}></div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
       </div>
       
@@ -276,6 +581,7 @@ const ScaleExplorer: React.FC<ScaleExplorerProps> = () => {
               let degreeName = '';
               switch (interval) {
                 case 0: degreeName = '1 (Root)'; break;
+                case 1: degreeName = 'b2 (Minor 2nd)'; break;
                 case 2: degreeName = '2 (Major 2nd)'; break;
                 case 3: degreeName = 'b3 (Minor 3rd)'; break;
                 case 4: degreeName = '3 (Major 3rd)'; break;
