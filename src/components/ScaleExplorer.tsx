@@ -1,10 +1,19 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Fretboard } from './Fretboard';
+import { FretboardNote } from './FretboardNote';
+import { FretboardMarker } from './FretboardMarker';
+import { NotePosition, ALL_NOTES } from '@/hooks/useFretboard';
 
-// All music notes
-const ALL_NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-// Note: A is at index 9 in the ALL_NOTES array
+// Standard guitar tuning notes (from 6th string to 1st)
+const STANDARD_TUNING = ['E', 'A', 'D', 'G', 'B', 'E'];
+
+// Number of frets to display
+const FRET_COUNT = 24;
+
+// Number of visible frets at a time
+const VISIBLE_FRET_COUNT = 13;
 
 // Common scale types with their interval patterns
 const SCALE_TYPES = {
@@ -226,29 +235,10 @@ const SCALE_POSITIONS: ScalePositions = {
   ],
 };
 
-// Standard guitar tuning (from 6th string to 1st)
-const STANDARD_TUNING = ['E', 'A', 'D', 'G', 'B', 'E'];
-
-// Note indices in the ALL_NOTES array for each open string
-const OPEN_STRING_INDICES = [
-  7, // E (index 7 in ALL_NOTES)
-  0, // A (index 0 in ALL_NOTES)
-  5, // D (index 5 in ALL_NOTES)
-  10, // G (index 10 in ALL_NOTES)
-  2, // B (index 2 in ALL_NOTES)
-  7, // E (index 7 in ALL_NOTES)
-];
-
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface ScaleExplorerProps {
-  // Add props as needed
-}
-
-const ScaleExplorer: React.FC<ScaleExplorerProps> = () => {
+const ScaleExplorer: React.FC = () => {
   const [rootNote, setRootNote] = useState<string>('A');
   const [scaleType, setScaleType] = useState<ScaleType>('minorPentatonic');
   const [position, setPosition] = useState<number>(0); // 0 means no specific position
-  const [fretCount, /*setFretCount*/] = useState<number>(12); // Show 12 frets at a time
   const [startFret, setStartFret] = useState<number>(0);
 
   // Calculate the notes in the selected scale
@@ -263,22 +253,17 @@ const ScaleExplorer: React.FC<ScaleExplorerProps> = () => {
   // Calculate if a note at a given position is in the scale
   const isNoteInScale = (stringIndex: number, fret: number): boolean => {
     const scaleNotes = getScaleNotes();
-    const openStringNoteIndex = OPEN_STRING_INDICES[stringIndex];
+    const openStringNoteIndex = ALL_NOTES.indexOf(STANDARD_TUNING[stringIndex]);
     const noteIndex = (openStringNoteIndex + fret) % 12;
     const note = ALL_NOTES[noteIndex];
     return scaleNotes.includes(note);
   };
 
-  // Get the note at a given position
-  const getNoteAtPosition = (stringIndex: number, fret: number): string => {
-    const openStringNoteIndex = OPEN_STRING_INDICES[stringIndex];
-    const noteIndex = (openStringNoteIndex + fret) % 12;
-    return ALL_NOTES[noteIndex];
-  };
-
   // Check if a note is the root note
   const isRootNote = (stringIndex: number, fret: number): boolean => {
-    return getNoteAtPosition(stringIndex, fret) === rootNote;
+    const openStringNoteIndex = ALL_NOTES.indexOf(STANDARD_TUNING[stringIndex]);
+    const noteIndex = (openStringNoteIndex + fret) % 12;
+    return ALL_NOTES[noteIndex] === rootNote;
   };
 
   // Check if a note is part of the currently highlighted position pattern
@@ -315,7 +300,7 @@ const ScaleExplorer: React.FC<ScaleExplorerProps> = () => {
     
     return false;
   };
-  
+
   // Get available positions for the current scale type
   const getAvailablePositions = () => {
     if (SCALE_POSITIONS[scaleType]) {
@@ -323,7 +308,7 @@ const ScaleExplorer: React.FC<ScaleExplorerProps> = () => {
     }
     return [];
   };
-  
+
   const availablePositions = getAvailablePositions();
   const hasPositions = availablePositions.length > 0;
 
@@ -487,90 +472,30 @@ const ScaleExplorer: React.FC<ScaleExplorerProps> = () => {
       </div>
       
       <div className="bg-white dark:bg-secondary-900 p-4 rounded-lg shadow-inner overflow-x-auto">
-        <div className="min-w-[700px]">
-          {/* Fretboard visualization */}
-          <div className="flex border-b border-secondary-300 dark:border-secondary-600">
-            <div className="w-10 flex-shrink-0"></div>
-            {Array.from({ length: fretCount + 1 }).map((_, fretNum) => {
-              const currentFret = startFret + fretNum;
-              if (currentFret > 24) return null;
-              return (
-                <div
-                  key={`fret-${fretNum}`}
-                  className={`flex-1 text-center py-2 font-medium ${
-                    [0, 3, 5, 7, 9, 12, 15, 17, 19, 21, 24].includes(currentFret) ? 'text-primary-600' : ''
-                  }`}
-                >
-                  {currentFret}
-                </div>
-              );
-            })}
-          </div>
+        <Fretboard
+          tuning={STANDARD_TUNING}
+          fretCount={FRET_COUNT}
+          startFret={startFret}
+          visibleFretCount={VISIBLE_FRET_COUNT}
+          renderNote={(note, position) => {
+            const inScale = isNoteInScale(position.string, position.fret);
+            const isRoot = isRootNote(position.string, position.fret);
+            const inPattern = isInHighlightedPattern(position.string, position.fret);
 
-          {/* String rows - 6th string (Low E) at the top, 1st string (High E) at the bottom */}
-          {[0, 1, 2, 3, 4, 5].map((index) => {
-            // Get correct tuning for this string (0=Low E, 5=High E)
-            const stringNote = STANDARD_TUNING[index];
-            const stringIndex = index;
-            
+            if (!inScale) return null;
+
             return (
-              <div
-                key={`string-${stringIndex}`}
-                className="flex border-b border-secondary-200 dark:border-secondary-700 last:border-b-0"
-              >
-                {/* String name */}
-                <div className="w-10 flex-shrink-0 flex items-center justify-center font-semibold text-primary-700 dark:text-primary-300">
-                  {stringNote}
-                </div>
-
-                {/* Frets for this string */}
-                {Array.from({ length: fretCount + 1 }).map((_, fretNum) => {
-                  const currentFret = startFret + fretNum;
-                  if (currentFret > 24) return null;
-                  
-                  const inScale = isNoteInScale(stringIndex, currentFret);
-                  const isRoot = isRootNote(stringIndex, currentFret);
-                  const note = getNoteAtPosition(stringIndex, currentFret);
-                  const inPattern = isInHighlightedPattern(stringIndex, currentFret);
-                  
-                  return (
-                    <div
-                      key={`string-${stringIndex}-fret-${fretNum}`}
-                      className={`flex-1 flex items-center justify-center min-h-[40px] ${
-                        currentFret === 0 ? 'bg-secondary-100 dark:bg-secondary-700/50' : ''
-                      }`}
-                    >
-                      {inScale && (
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm
-                            ${
-                              isRoot
-                                ? 'bg-primary-600 text-white'
-                                : inPattern
-                                  ? 'bg-yellow-400 text-black border-[3px] border-orange-500 dark:bg-yellow-500 dark:border-yellow-300' 
-                                  : 'bg-secondary-200 dark:bg-secondary-700 text-secondary-800 dark:text-secondary-200'
-                            }
-                          `}
-                        >
-                          {note}
-                        </div>
-                      )}
-                      
-                      {/* Fret markers at traditional positions */}
-                      {stringIndex === 0 && [3, 5, 7, 9, 12, 15, 17, 19, 21, 24].includes(currentFret) && (
-                        <div className="absolute -top-1 inset-x-0 flex justify-center">
-                          <div className={`w-2 h-2 rounded-full ${
-                            [12, 24].includes(currentFret) ? 'bg-primary-500' : 'bg-secondary-400'
-                          }`}></div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              <FretboardNote
+                note={note}
+                position={position}
+                isActive={isRoot}
+                isNatural={note.length === 1}
+                className={inPattern ? 'border-[3px] border-orange-500 dark:border-yellow-300' : ''}
+              />
             );
-          })}
-        </div>
+          }}
+          renderFretMarker={(fret) => <FretboardMarker fret={fret} />}
+        />
       </div>
       
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">

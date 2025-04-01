@@ -1,6 +1,10 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Fretboard } from './Fretboard';
+import { FretboardNote } from './FretboardNote';
+import { FretboardMarker } from './FretboardMarker';
+import { NotePosition, ALL_NOTES } from '@/hooks/useFretboard';
 
 // Standard guitar tuning notes (from 6th string to 1st)
 const STANDARD_TUNING = ['E', 'A', 'D', 'G', 'B', 'E'];
@@ -8,8 +12,10 @@ const STANDARD_TUNING = ['E', 'A', 'D', 'G', 'B', 'E'];
 // Number of frets to display
 const FRET_COUNT = 24;
 
+// Number of visible frets at a time
+const VISIBLE_FRET_COUNT = 13;
+
 // All music notes
-const ALL_NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 // const NATURAL_NOTES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 
 // Note indices in the ALL_NOTES array for each open string
@@ -24,16 +30,11 @@ const OPEN_STRING_INDICES = [
 
 type FretboardMode = 'explore' | 'identify' | 'find' | 'octaves';
 
-type NotePosition = {
-  string: number;
-  fret: number;
-};
-
-type FretboardProps = {
+interface FretboardDisplayProps {
   showPractice?: boolean;
-};
+}
 
-const FretboardDisplay: React.FC<FretboardProps> = ({ showPractice = false }) => {
+const FretboardDisplay: React.FC<FretboardDisplayProps> = ({ showPractice = false }) => {
   const [showNaturalOnly, setShowNaturalOnly] = useState(false);
   const [highlightNote, setHighlightNote] = useState<string | null>(null);
   const [selectedString, setSelectedString] = useState<number | null>(null);
@@ -56,17 +57,17 @@ const FretboardDisplay: React.FC<FretboardProps> = ({ showPractice = false }) =>
   const [foundOctaves, setFoundOctaves] = useState<NotePosition[]>([]);
   const [totalOctaves, setTotalOctaves] = useState<number>(0);
 
-  // Determine visible fret range - always show 13 frets (12 + nut)
-  const visibleFretCount = 13;
-  const fretsToShow = Math.min(visibleFretCount, FRET_COUNT + 1 - startFret);
-  const endFret = startFret + fretsToShow - 1;
+  // Add a state for the initial octave position
+  const [initialOctavePosition, setInitialOctavePosition] = useState<NotePosition | null>(null);
 
   // Calculate total octaves for the current note
   const calculateTotalOctaves = (note: string) => {
     let count = 0;
     for (let string = 0; string < 6; string++) {
-      for (let fret = startFret; fret <= endFret; fret++) {
-        if (getNoteAtPosition(string, fret) === note) {
+      for (let fret = startFret; fret <= startFret + VISIBLE_FRET_COUNT - 1; fret++) {
+        const openStringNoteIndex = ALL_NOTES.indexOf(STANDARD_TUNING[string]);
+        const noteIndex = (openStringNoteIndex + fret) % 12;
+        if (ALL_NOTES[noteIndex] === note) {
           count++;
         }
       }
@@ -74,608 +75,613 @@ const FretboardDisplay: React.FC<FretboardProps> = ({ showPractice = false }) =>
     return count;
   };
 
-  // Effect to update total octaves when highlight note or fret range changes
-  useEffect(() => {
-    if (mode === 'octaves' && highlightNote) {
-      setTotalOctaves(calculateTotalOctaves(highlightNote));
-    }
-  }, [highlightNote, startFret, endFret, mode]);
-
-  // Effect to handle the showPractice prop
-  useEffect(() => {
-    if (showPractice && mode === 'explore') {
-      // Only activate a specific practice mode if triggered externally
-      // but leave the UI in place
-    }
-  }, [showPractice, mode]);
-
-  // Initialize practice modes
-  useEffect(() => {
+  // Generate a new quiz question
+  const generateQuizQuestion = () => {
     if (mode === 'identify') {
-      generateIdentifyQuestion();
-    } else if (mode === 'find') {
-      generateFindQuestion();
-    } else if (mode === 'octaves') {
-      setHighlightNote(null);
-      setFoundOctaves([]);
+      const string = Math.floor(Math.random() * 6);
+      const fret = Math.floor(Math.random() * VISIBLE_FRET_COUNT);
+      const position = { string, fret };
+      
+      const openStringNoteIndex = ALL_NOTES.indexOf(STANDARD_TUNING[string]);
+      const noteIndex = (openStringNoteIndex + fret) % 12;
+      const note = ALL_NOTES[noteIndex];
+      
+      setQuizPosition(position);
+      setQuizNote(note);
       setShowAnswer(false);
-    }
-  }, [mode]);
+      setQuizResult(null);
+      setUserAnswer(null);
+    } else if (mode === 'find') {
+      // Start with natural notes for better learning progression
+      const naturalNotes = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+      const allNotes = showNaturalOnly ? naturalNotes : ALL_NOTES;
+      
+      const randomNote = allNotes[Math.floor(Math.random() * allNotes.length)];
+      setQuizNote(randomNote);
+      setQuizPosition(null);
+      setShowAnswer(false);
+      setQuizResult(null);
+      setUserAnswer(null);
+      setFoundPositions([]);
 
-  // Get note at a specific position
-  const getNoteAtPosition = (stringIndex: number, fret: number): string => {
-    // Convert visual index (0 = 6th string) to array index (0 = 1st string)
-    const arrayStringIndex = 5 - stringIndex;
-    const openStringIndex = OPEN_STRING_INDICES[arrayStringIndex];
-    const noteIndex = (openStringIndex + fret) % 12;
-    return ALL_NOTES[noteIndex];
+      // Calculate total positions to find
+      let count = 0;
+      for (let string = 0; string < 6; string++) {
+        for (let fret = startFret; fret <= startFret + VISIBLE_FRET_COUNT - 1; fret++) {
+          const openStringNoteIndex = ALL_NOTES.indexOf(STANDARD_TUNING[string]);
+          const noteIndex = (openStringNoteIndex + fret) % 12;
+          if (ALL_NOTES[noteIndex] === randomNote) {
+            count++;
+          }
+        }
+      }
+      setTotalPositionsToFind(count);
+    } else if (mode === 'octaves') {
+      const randomNote = ALL_NOTES[Math.floor(Math.random() * ALL_NOTES.length)];
+      setHighlightNote(randomNote);
+      setFoundOctaves([]);
+      setQuizResult(null);
+      setShowAnswer(false);
+      
+      // Find all possible positions for this note
+      const positions: NotePosition[] = [];
+      for (let string = 0; string < 6; string++) {
+        for (let fret = startFret; fret <= startFret + VISIBLE_FRET_COUNT - 1; fret++) {
+          const openStringNoteIndex = ALL_NOTES.indexOf(STANDARD_TUNING[string]);
+          const noteIndex = (openStringNoteIndex + fret) % 12;
+          if (ALL_NOTES[noteIndex] === randomNote) {
+            positions.push({ string, fret });
+          }
+        }
+      }
+      
+      // Randomly select one position as the initial position
+      const initialPosition = positions[Math.floor(Math.random() * positions.length)];
+      setInitialOctavePosition(initialPosition);
+      setTotalOctaves(calculateTotalOctaves(randomNote) - 1); // Subtract 1 because we show one position
+    }
   };
 
-  // Check if a note is a natural note (no sharp or flat)
+  // Add a helper function to check if a position is a valid octave
+  const isValidOctave = (fromPos: NotePosition, toPos: NotePosition): boolean => {
+    const stringDiff = toPos.string - fromPos.string;
+    const fretDiff = toPos.fret - fromPos.fret;
+
+    // Same string, 12 frets up
+    if (stringDiff === 0 && Math.abs(fretDiff) === 12) {
+      return true;
+    }
+    
+    // Two strings up, 3 frets back
+    if (Math.abs(stringDiff) === 2) {
+      // If going up strings (negative stringDiff), should go back 3 frets
+      if (stringDiff < 0 && fretDiff === -3) {
+        return true;
+      }
+      // If going down strings (positive stringDiff), should go forward 3 frets
+      if (stringDiff > 0 && fretDiff === 3) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  // Update the handleNoteClick for octaves mode
+  const handleNoteClick = (stringIndex: number, fret: number, note: string) => {
+    if (mode === 'identify') {
+      // In identify mode, clicking the note position does nothing
+      // Answers should only come from the note selection buttons
+      return;
+    } else if (mode === 'find') {
+      const position = { string: stringIndex, fret };
+      if (note === quizNote && !foundPositions.some(p => p.string === stringIndex && p.fret === fret)) {
+        // Correct note found
+        setFoundPositions(prev => [...prev, position]);
+        setQuizResult('correct');
+        
+        // Check if all positions are found
+        if (foundPositions.length + 1 === totalPositionsToFind) {
+          setTimeout(() => {
+            generateQuizQuestion();
+          }, 2000); // Increased from 1500ms to 2000ms for final success
+        } else {
+          // Clear the correct feedback after a longer delay if there are more to find
+          setTimeout(() => {
+            setQuizResult(null);
+          }, 1500); // Increased from 800ms to 1500ms for individual finds
+        }
+      } else if (note !== quizNote) {
+        // Incorrect attempt
+        setQuizResult('incorrect');
+        setTimeout(() => {
+          setQuizResult(null);
+        }, 1500); // Increased from 800ms to 1500ms for incorrect attempts
+      }
+    } else if (mode === 'octaves') {
+      const position = { string: stringIndex, fret };
+      
+      // Don't count clicking on the initial position
+      if (initialOctavePosition && 
+          stringIndex === initialOctavePosition.string && 
+          fret === initialOctavePosition.fret) {
+        return;
+      }
+
+      // Get the actual note at the clicked position
+      const openStringNoteIndex = ALL_NOTES.indexOf(STANDARD_TUNING[stringIndex]);
+      const noteIndex = (openStringNoteIndex + fret) % 12;
+      const clickedNote = ALL_NOTES[noteIndex];
+
+      // First, check if the note matches (must be the same note name)
+      if (clickedNote !== highlightNote) {
+        setQuizResult('incorrect');
+        setTimeout(() => {
+          setQuizResult(null);
+        }, 1500);
+        return;
+      }
+
+      // Check if this position is already found
+      const isAlreadyFound = foundOctaves.some(p => p.string === stringIndex && p.fret === fret);
+      if (isAlreadyFound) {
+        return; // Already found this position
+      }
+
+      // Check if this is a valid octave relationship
+      // Must be connected to either the initial position or a found octave
+      let isValidOctaveRelationship = false;
+      
+      // Check against initial position
+      if (initialOctavePosition) {
+        isValidOctaveRelationship = isValidOctave(initialOctavePosition, position);
+      }
+      
+      // If not valid from initial, check against found octaves
+      if (!isValidOctaveRelationship && foundOctaves.length > 0) {
+        isValidOctaveRelationship = foundOctaves.some(foundPos => isValidOctave(foundPos, position));
+      }
+
+      if (isValidOctaveRelationship) {
+        // Found a valid octave
+        setFoundOctaves(prev => [...prev, position]);
+        setQuizResult('correct');
+        
+        if (foundOctaves.length + 1 === totalOctaves) {
+          setTimeout(() => {
+            generateQuizQuestion();
+          }, 2000);
+        } else {
+          setTimeout(() => {
+            setQuizResult(null);
+          }, 1500);
+        }
+      } else {
+        // Not a valid octave relationship
+        setQuizResult('incorrect');
+        setTimeout(() => {
+          setQuizResult(null);
+        }, 1500);
+      }
+    } else {
+      setHighlightNote(highlightNote === note ? null : note);
+    }
+  };
+
+  // Check if a note is natural (no sharp or flat)
   const isNaturalNote = (note: string): boolean => {
     return note.length === 1;
   };
 
-  // Check if a position is an octave of the target note
+  // Check if a position is an octave of the highlighted note
   const isOctavePosition = (note: string, targetNote: string | null): boolean => {
     if (!targetNote) return false;
-    const noteIndex = ALL_NOTES.indexOf(note);
-    const targetIndex = ALL_NOTES.indexOf(targetNote);
-    return noteIndex === targetIndex;
-  };
-
-  // Generate a random position on the fretboard for "Identify Notes" mode
-  const generateIdentifyQuestion = () => {
-    const randomString = Math.floor(Math.random() * 6);
-    
-    // Generate random fret with bias towards 0-12
-    let randomFret;
-    if (Math.random() < 0.67) { // 2/3 chance for frets 0-12
-      randomFret = Math.floor(Math.random() * 13);
-    } else { // 1/3 chance for frets 13-24
-      randomFret = Math.floor(Math.random() * 12) + 13;
-    }
-    
-    const position = { string: randomString, fret: randomFret };
-    setQuizPosition(position);
-    setQuizNote(null);
-    setShowAnswer(false);
-    setQuizResult(null);
-    setUserAnswer(null);
-
-    // Ensure the target fret is visible by adjusting startFret
-    const targetStartFret = Math.max(0, Math.min(FRET_COUNT - 12, randomFret - 6));
-    setStartFret(targetStartFret);
-  };
-
-  // Generate a note for the "Find Notes" mode
-  const generateFindQuestion = () => {
-    // Start with natural notes for better learning progression
-    const naturalNotes = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-    const allNotes = showNaturalOnly ? naturalNotes : ALL_NOTES;
-    
-    const randomNote = allNotes[Math.floor(Math.random() * allNotes.length)];
-    setQuizNote(randomNote);
-    setQuizPosition(null);
-    setShowAnswer(false);
-    setQuizResult(null);
-    setUserAnswer(null);
-    setFoundPositions([]);
-
-    // Calculate total positions to find
-    let count = 0;
-    for (let string = 0; string < 6; string++) {
-      for (let fret = startFret; fret <= endFret; fret++) {
-        if (getNoteAtPosition(string, fret) === randomNote) {
-          count++;
-        }
-      }
-    }
-    setTotalPositionsToFind(count);
-  };
-
-  // Handle user clicking on a note for practice modes
-  const handleNoteClick = (stringIndex: number, fret: number, note: string) => {
-    if (mode === 'explore') {
-      setHighlightNote(highlightNote === note ? null : note);
-    } else if (mode === 'identify' && quizPosition) {
-      if (stringIndex === quizPosition.string && fret === quizPosition.fret) {
-        setUserAnswer(note);
-        setQuizResult('correct');
-        setTimeout(() => {
-          generateIdentifyQuestion();
-        }, 1500);
-      } else {
-        setUserAnswer(note);
-        setQuizResult('incorrect');
-      }
-    } else if (mode === 'find' && quizNote) {
-      if (note === quizNote) {
-        const newPosition = { string: stringIndex, fret };
-        // Check if this position was already found
-        if (!foundPositions.some(pos => pos.string === stringIndex && pos.fret === fret)) {
-          const newFoundPositions = [...foundPositions, newPosition];
-          setFoundPositions(newFoundPositions);
-          
-          // Check if all positions are found
-          if (newFoundPositions.length === totalPositionsToFind) {
-            setQuizResult('correct');
-            setTimeout(() => {
-              generateFindQuestion();
-            }, 1500);
-          }
-        }
-      } else {
-        setQuizResult('incorrect');
-        setTimeout(() => {
-          setQuizResult(null);
-        }, 1000);
-      }
-    } else if (mode === 'octaves') {
-      if (!highlightNote) {
-        // Set the initial note when none is selected
-        setHighlightNote(note);
-        setFoundOctaves([{ string: stringIndex, fret }]);
-        setTotalOctaves(calculateTotalOctaves(note));
-        return;
-      }
-      if (isOctavePosition(note, highlightNote)) {
-        const newPosition = { string: stringIndex, fret };
-        if (!foundOctaves.some(pos => pos.string === stringIndex && pos.fret === fret)) {
-          const newFoundOctaves = [...foundOctaves, newPosition];
-          setFoundOctaves(newFoundOctaves);
-          
-          // Check if all octaves are found
-          if (newFoundOctaves.length === totalOctaves) {
-            setQuizResult('correct');
-            setTimeout(() => {
-              setQuizResult(null);
-            }, 2000);
-          }
-        }
-      } else {
-        setQuizResult('incorrect');
-        setTimeout(() => {
-          setQuizResult(null);
-        }, 1000);
-      }
-    }
+    return note === targetNote;
   };
 
   // Should we show this note based on current filters
   const shouldShowNote = (note: string, stringIndex: number, fretNum: number): boolean => {
-    if (mode === 'identify') {
-      // Only show the note at the quiz position when showing answer
-      if (quizPosition && stringIndex === quizPosition.string && fretNum === quizPosition.fret) {
-        return showAnswer;
-      }
-      return false;
-    } else if (mode === 'find') {
-      // In find mode, show found positions and all positions when showing answer
-      if (showAnswer && quizNote && note === quizNote) {
+    switch (mode) {
+      case 'identify':
+        // In identify mode, only show the quiz position
+        return quizPosition?.string === stringIndex && quizPosition?.fret === fretNum;
+
+      case 'find':
+      case 'octaves':
+        // In find and octaves modes, show ALL positions
         return true;
-      }
-      return foundPositions.some(pos => pos.string === stringIndex && pos.fret === fretNum);
-    } else if (mode === 'octaves') {
-      if (foundOctaves.some(pos => pos.string === stringIndex && pos.fret === fretNum)) {
+
+      case 'explore':
+        // In explore mode, apply filters
+        if (selectedString !== null && stringIndex !== selectedString) {
+          return false;
+        }
+        if (showNaturalOnly && !isNaturalNote(note) && note !== highlightNote) {
+          return false;
+        }
         return true;
-      }
-      return showAnswer && isOctavePosition(note, highlightNote);
-    } else {
-      // In explore mode, show notes based on filters and string selection
-      if (selectedString !== null) {
-        return stringIndex === selectedString;
-      }
-      if (showNaturalOnly) {
-        return isNaturalNote(note) || (highlightNote !== null && note === highlightNote);
-      }
-      return true;
+
+      default:
+        return true;
     }
   };
-  
-  // Change start fret position if we're viewing a subset of the neck
+
+  // Change start fret position
   const moveStartFret = (direction: 'left' | 'right') => {
     if (direction === 'left' && startFret > 0) {
       setStartFret(startFret - 1);
-    } else if (direction === 'right' && startFret < FRET_COUNT - 12) {
+    } else if (direction === 'right' && startFret < FRET_COUNT - VISIBLE_FRET_COUNT + 1) {
       setStartFret(startFret + 1);
     }
   };
-  
-  // Check if current quiz position is visible
-  const isQuizPositionVisible = quizPosition ? 
-    quizPosition.fret >= startFret && quizPosition.fret <= endFret : 
-    true;
 
-  // If quiz position becomes invisible, scroll to make it visible
+  // Effect to handle practice modes
   useEffect(() => {
-    if (mode === 'identify' && quizPosition && !isQuizPositionVisible) {
-      const targetStartFret = Math.max(0, Math.min(FRET_COUNT - 12, quizPosition.fret - 6));
-      setStartFret(targetStartFret);
+    if (mode !== 'explore') {
+      generateQuizQuestion();
+    } else {
+      // Reset states when exiting practice mode
+      setQuizNote(null);
+      setQuizPosition(null);
+      setShowAnswer(false);
+      setQuizResult(null);
+      setUserAnswer(null);
+      setFoundPositions([]);
+      setFoundOctaves([]);
+      setHighlightNote(null);
     }
-  }, [mode, quizPosition, isQuizPositionVisible]);
+  }, [mode]); // Only depend on mode changes
 
-  // Reset to explore mode
-  const resetToExploreMode = () => {
-    setMode('explore');
-    setHighlightNote(null);
-    setQuizNote(null);
-    setQuizPosition(null);
+  // Handle mode change
+  const handleModeChange = (newMode: FretboardMode) => {
+    setMode(newMode);
     setShowAnswer(false);
     setQuizResult(null);
     setUserAnswer(null);
-    setSelectedString(null);
     setFoundPositions([]);
     setFoundOctaves([]);
+    if (newMode === 'explore') {
+      setHighlightNote(null);
+    }
   };
 
-  // Get quiz instruction text
-  const getQuizInstructionText = () => {
-    if (mode === 'identify') {
-      return `What note is at the highlighted position? (String ${quizPosition ? quizPosition.string + 1 : ''}, Fret ${quizPosition ? quizPosition.fret : ''})`;
-    } else if (mode === 'find') {
-      return `Find all occurrences of the note ${quizNote} on the fretboard (Found ${foundPositions.length} of ${totalPositionsToFind})`;
-    } else if (mode === 'octaves') {
-      if (!highlightNote) {
-        return 'Click any note to start finding its octaves';
-      }
-      return `Find all octaves of ${highlightNote}. Common patterns:\n- Same string: 12 frets up\n- Two strings up: 3 frets back`;
+  // Update the renderNote function for octaves mode
+  const renderNote = (note: string, position: NotePosition) => {
+    if (!shouldShowNote(note, position.string, position.fret)) {
+      return null;
     }
-    return '';
+
+    let displayNote = note;
+    let shouldHighlight = false;
+
+    switch (mode) {
+      case 'identify':
+        displayNote = showAnswer ? note : '?';
+        shouldHighlight = quizPosition?.string === position.string && 
+                         quizPosition?.fret === position.fret;
+        break;
+
+      case 'find':
+        const isFound = foundPositions.some(
+          p => p.string === position.string && p.fret === position.fret
+        );
+        if (isFound) {
+          displayNote = note;
+          shouldHighlight = true;
+        } else if (showAnswer && note === quizNote) {
+          displayNote = note;
+          shouldHighlight = true;
+        } else {
+          displayNote = '•';
+        }
+        break;
+
+      case 'octaves':
+        const isInitialPosition = initialOctavePosition && 
+          position.string === initialOctavePosition.string && 
+          position.fret === initialOctavePosition.fret;
+        
+        const isFoundOctave = foundOctaves.some(
+          p => p.string === position.string && p.fret === position.fret
+        );
+
+        if (isInitialPosition) {
+          // Show and highlight initial position
+          displayNote = note;
+          shouldHighlight = true;
+        } else if (isFoundOctave) {
+          // Show and highlight found octaves
+          displayNote = note;
+          shouldHighlight = true;
+        } else if (showAnswer && note === highlightNote) {
+          // Show and highlight all valid octaves when showing answer
+          displayNote = note;
+          shouldHighlight = true;
+        } else if (hoverPosition?.string === position.string && 
+                   hoverPosition?.fret === position.fret) {
+          // Show hover state
+          displayNote = '○';  // Empty circle for hover state
+        } else {
+          // Show nothing for other positions but keep them clickable
+          displayNote = '';
+        }
+        break;
+
+      case 'explore':
+        shouldHighlight = highlightNote === note;
+        break;
+    }
+
+    return (
+      <FretboardNote
+        note={displayNote}
+        position={position}
+        isActive={shouldHighlight}
+        isNatural={isNaturalNote(note)}
+        isQuizPosition={mode === 'identify' && quizPosition?.string === position.string && quizPosition?.fret === position.fret}
+        showAnswer={showAnswer}
+        quizResult={quizResult}
+        quizNote={quizNote}
+        onClick={() => handleNoteClick(position.string, position.fret, note)}
+        onMouseEnter={() => mode === 'octaves' && setHoverPosition(position)}
+        onMouseLeave={() => mode === 'octaves' && setHoverPosition(null)}
+      />
+    );
   };
 
   return (
     <div className="w-full">
-      <div className="flex flex-wrap space-x-2 gap-y-2 mb-4">
-        {mode === 'explore' && (
-          <>
-            <button
-              onClick={() => setShowNaturalOnly(!showNaturalOnly)}
-              className={`px-3 py-1 rounded-md text-sm ${
-                showNaturalOnly
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-secondary-100 dark:bg-secondary-700 text-secondary-800 dark:text-secondary-200'
-              }`}
-            >
-              {showNaturalOnly ? 'Natural Notes Only' : 'Show All Notes'}
-            </button>
-            {selectedString !== null && (
+      <div className="mb-6">
+        <div className="flex flex-col space-y-4">
+          {/* Exploration Mode Controls */}
+          {mode === 'explore' && (
+            <div className="flex flex-wrap gap-3">
               <button
-                onClick={() => setSelectedString(null)}
-                className="px-3 py-1 rounded-md text-sm bg-secondary-200 dark:bg-secondary-700 hover:bg-secondary-300"
+                onClick={() => setShowNaturalOnly(!showNaturalOnly)}
+                className={`px-4 py-2 rounded-md text-sm font-medium ${
+                  showNaturalOnly
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-secondary-100 dark:bg-secondary-700 text-secondary-800 dark:text-secondary-200'
+                }`}
               >
-                Show All Strings
+                {showNaturalOnly ? 'Natural Notes Only' : 'Show All Notes'}
               </button>
-            )}
-          </>
-        )}
-        
-        {mode !== 'explore' && (
-          <>
-            <button
-              onClick={() => setShowAnswer(!showAnswer)}
-              className={`px-3 py-1 rounded-md text-sm ${
-                showAnswer
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-secondary-100 dark:bg-secondary-700 text-secondary-800 dark:text-secondary-200'
-              }`}
-            >
-              {showAnswer ? 'Hide Answer' : 'Show Answer'}
-            </button>
-            
-            <button
-              onClick={() => {
-                if (mode === 'identify') {
-                  generateIdentifyQuestion();
-                } else if (mode === 'find') {
-                  generateFindQuestion();
-                } else if (mode === 'octaves') {
-                  const randomNote = ALL_NOTES[Math.floor(Math.random() * ALL_NOTES.length)];
-                  setHighlightNote(randomNote);
-                  setFoundOctaves([]);
-                  setQuizResult(null);
-                }
-              }}
-              className="px-3 py-1 rounded-md text-sm bg-secondary-200 dark:bg-secondary-700 hover:bg-secondary-300"
-            >
-              {mode === 'octaves' ? 'Random Note' : 'New Question'}
-            </button>
-            
-            <button
-              onClick={resetToExploreMode}
-              className="px-3 py-1 rounded-md text-sm bg-secondary-200 dark:bg-secondary-700 hover:bg-secondary-300"
-            >
-              Exit Practice
-            </button>
-          </>
-        )}
-        
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => moveStartFret('left')}
-            disabled={startFret === 0}
-            className={`px-2 py-1 rounded-md ${
-              startFret === 0
-                ? 'bg-secondary-100 dark:bg-secondary-800 text-secondary-400 cursor-not-allowed'
-                : 'bg-secondary-200 dark:bg-secondary-700 hover:bg-secondary-300'
-            }`}
-          >
-            ←
-          </button>
-          <span className="text-sm">Fret {startFret}</span>
-          <button
-            onClick={() => moveStartFret('right')}
-            disabled={startFret >= FRET_COUNT - 12}
-            className={`px-2 py-1 rounded-md ${
-              startFret >= FRET_COUNT - 12
-                ? 'bg-secondary-100 dark:bg-secondary-800 text-secondary-400 cursor-not-allowed'
-                : 'bg-secondary-200 dark:bg-secondary-700 hover:bg-secondary-300'
-            }`}
-          >
-            →
-          </button>
-        </div>
-      </div>
-
-      {mode === 'explore' && (
-        <div className="mt-4 mb-6 p-4 bg-white dark:bg-secondary-900 rounded-lg border border-gray-200 dark:border-secondary-700 shadow-sm">
-          <h2 className="text-lg font-bold mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">Practice Modes</h2>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-            <button 
-              onClick={() => {
-                setMode('identify');
-              }}
-              className="p-3 text-left rounded-lg transition-colors border border-gray-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 hover:bg-gray-100 dark:hover:bg-secondary-700 text-secondary-900 dark:text-white"
-            >
-              <span className="font-medium block mb-1">Identify Notes</span>
-              <span className="text-xs text-secondary-600 dark:text-secondary-300">Name the note at a highlighted position</span>
-            </button>
-            
-            <button 
-              onClick={() => {
-                setMode('find');
-              }}
-              className="p-3 text-left rounded-lg transition-colors border border-gray-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 hover:bg-gray-100 dark:hover:bg-secondary-700 text-secondary-900 dark:text-white"
-            >
-              <span className="font-medium block mb-1">Find Notes</span>
-              <span className="text-xs text-secondary-600 dark:text-secondary-300">Locate a specific note across the fretboard</span>
-            </button>
-            
-            <button 
-              onClick={() => {
-                setMode('octaves');
-              }}
-              className="p-3 text-left rounded-lg transition-colors border border-gray-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 hover:bg-gray-100 dark:hover:bg-secondary-700 text-secondary-900 dark:text-white"
-            >
-              <span className="font-medium block mb-1">Octave Shapes</span>
-              <span className="text-xs text-secondary-600 dark:text-secondary-300">Learn the pattern of octaves on the fretboard</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {mode !== 'explore' && (
-        <div className="mb-4 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg">
-          <h3 className="font-medium mb-1">{getQuizInstructionText()}</h3>
-        </div>
-      )}
-      
-      {mode === 'identify' && (
-        <div className="mb-4 p-3 bg-secondary-50 dark:bg-secondary-800/30 rounded-lg">
-          <h3 className="font-medium mb-2">Select your answer:</h3>
-          <div className="grid grid-cols-6 sm:grid-cols-12 gap-2 mb-2">
-            {ALL_NOTES.map((note) => (
-              <button
-                key={note}
-                onClick={() => {
-                  if (!quizPosition) return;
-                  const correctNote = getNoteAtPosition(quizPosition.string, quizPosition.fret);
-                  setUserAnswer(note);
-                  if (note === correctNote) {
-                    setQuizResult('correct');
-                    setTimeout(() => {
-                      generateIdentifyQuestion();
-                    }, 1500);
-                  } else {
-                    setQuizResult('incorrect');
-                  }
-                }}
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium
-                  ${
-                    userAnswer === note
-                      ? userAnswer === getNoteAtPosition(quizPosition?.string || 0, quizPosition?.fret || 0)
-                        ? 'bg-green-500 text-white'
-                        : 'bg-red-500 text-white'
-                      : isNaturalNote(note)
-                      ? 'bg-secondary-800 dark:bg-secondary-200 text-white dark:text-secondary-800'
-                      : 'bg-secondary-200 dark:bg-secondary-700 text-secondary-800 dark:text-secondary-200'
-                  }
-                  hover:scale-110 transition-transform
-                `}
-              >
-                {note}
-              </button>
-            ))}
-          </div>
-          {quizResult && (
-            <div className={`p-2 rounded ${quizResult === 'correct' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
-              <p className={`text-sm font-medium ${quizResult === 'correct' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                {quizResult === 'correct' 
-                  ? 'Correct! Moving to next question...' 
-                  : `Incorrect. Try again or click "Show Answer" to reveal the correct note.`}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-      
-      {mode === 'find' && (
-        <div className="mb-4 p-3 bg-secondary-50 dark:bg-secondary-800/30 rounded-lg">
-          <h3 className="font-medium mb-2">Found positions:</h3>
-          <div className="text-sm text-secondary-600 dark:text-secondary-400 space-y-1">
-            {foundPositions.map((pos, index) => (
-              <p key={`found-${index}`}>{`String ${pos.string + 1}, Fret ${pos.fret}`}</p>
-            ))}
-          </div>
-        </div>
-      )}
-      
-      {mode === 'octaves' && highlightNote && (
-        <div className="mb-4 p-3 bg-secondary-50 dark:bg-secondary-800/30 rounded-lg">
-          <h3 className="font-medium mb-2">Octave Patterns Guide</h3>
-          <div className="text-sm text-secondary-600 dark:text-secondary-400 space-y-1">
-            <p>• Same string: Move up 12 frets</p>
-            <p>• Two strings up: Move back 3 frets</p>
-            <p>• Two strings down: Move up 3 frets</p>
-            <p className="mt-2">Found {foundOctaves.length} of {totalOctaves} octaves</p>
-          </div>
-          {quizResult === 'incorrect' && (
-            <div className="mt-2 p-2 bg-red-100 dark:bg-red-900/30 rounded">
-              <p className="text-sm text-red-600 dark:text-red-400">
-                That's not an octave. Try following the patterns above!
-              </p>
-            </div>
-          )}
-          {quizResult === 'correct' && (
-            <div className="mt-2 p-2 bg-green-100 dark:bg-green-900/30 rounded">
-              <p className="text-sm text-green-600 dark:text-green-400">
-                Great job! You've found all the octaves of {highlightNote}! Try another note or click "Random Note".
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-      
-      <div className="overflow-x-auto">
-        <div className="min-w-[700px]">
-          {/* Fret numbers */}
-          <div className="flex border-b-2 border-secondary-400 dark:border-secondary-500 mb-2">
-            <div className="w-10 flex-shrink-0"></div>
-            {Array.from({ length: fretsToShow }).map((_, fretNumIndex) => {
-              const fretNum = startFret + fretNumIndex;
-              return (
-                <div
-                  key={`fret-${fretNum}`}
-                  className={`flex-1 text-center py-2 font-medium ${
-                    fretNum === 0 ? 'text-secondary-500 font-bold' : ''
-                  } ${[3, 5, 7, 9, 12, 15, 17, 19, 21, 24].includes(fretNum) ? 'text-primary-600 dark:text-primary-400 font-bold' : ''}`}
+              {selectedString !== null && (
+                <button
+                  onClick={() => setSelectedString(null)}
+                  className="px-4 py-2 rounded-md text-sm font-medium bg-secondary-200 dark:bg-secondary-700 hover:bg-secondary-300"
                 >
-                  {fretNum}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Fretboard */}
-          <div className="border-b border-secondary-300 dark:border-secondary-600">
-            {/* String rows */}
-            {[...STANDARD_TUNING].reverse().map((stringNote, reversedIndex) => {
-              const stringIndex = reversedIndex;
-              return (
-                <div
-                  key={`string-${stringIndex}`}
-                  className="flex border-b border-secondary-300 dark:border-secondary-600 last:border-b-0"
+                  Show All Strings
+                </button>
+              )}
+              
+              {/* Practice Mode Entry */}
+              <div className="flex-1 flex justify-end">
+                <button
+                  onClick={() => handleModeChange('identify')}
+                  className="px-4 py-2 rounded-md text-sm font-medium bg-primary-600 text-white hover:bg-primary-700"
                 >
-                  {/* String name */}
-                  <div 
-                    className={`w-10 flex-shrink-0 flex items-center justify-center font-semibold cursor-pointer
-                      ${selectedString === stringIndex 
-                        ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20' 
-                        : 'text-primary-700 dark:text-primary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800/30'
-                      }`}
-                    onClick={() => mode === 'explore' && setSelectedString(selectedString === stringIndex ? null : stringIndex)}
-                    title={mode === 'explore' ? 'Click to show/hide notes on this string' : undefined}
+                  Start Practice
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Practice Mode Controls */}
+          {mode !== 'explore' && (
+            <div className="bg-white dark:bg-secondary-800 p-4 rounded-lg shadow-sm border border-secondary-200 dark:border-secondary-700">
+              <div className="flex flex-col space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Practice Mode</h3>
+                  <button
+                    onClick={() => handleModeChange('explore')}
+                    className="px-3 py-1 rounded-md text-sm bg-secondary-200 dark:bg-secondary-700 hover:bg-secondary-300"
                   >
-                    {mode === 'identify' && !showAnswer ? (stringIndex + 1) : stringNote}
+                    Exit Practice
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleModeChange('identify')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${
+                      mode === 'identify'
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-secondary-100 dark:bg-secondary-700 text-secondary-800 dark:text-secondary-200'
+                    }`}
+                  >
+                    <span className="mr-2">1</span>
+                    Identify Notes
+                  </button>
+                  <button
+                    onClick={() => handleModeChange('find')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${
+                      mode === 'find'
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-secondary-100 dark:bg-secondary-700 text-secondary-800 dark:text-secondary-200'
+                    }`}
+                  >
+                    <span className="mr-2">2</span>
+                    Find Notes
+                  </button>
+                  <button
+                    onClick={() => handleModeChange('octaves')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium flex items-center ${
+                      mode === 'octaves'
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-secondary-100 dark:bg-secondary-700 text-secondary-800 dark:text-secondary-200'
+                    }`}
+                  >
+                    <span className="mr-2">3</span>
+                    Find Octaves
+                  </button>
+                </div>
+
+                {(mode === 'identify' || mode === 'find' || mode === 'octaves') && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowAnswer(true)}
+                      className="px-4 py-2 rounded-md text-sm font-medium bg-secondary-200 dark:bg-secondary-700 hover:bg-secondary-300 flex-1"
+                    >
+                      Show Answer
+                    </button>
+                    <button
+                      onClick={generateQuizQuestion}
+                      className="px-4 py-2 rounded-md text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 flex-1"
+                    >
+                      Next Question
+                    </button>
                   </div>
-
-                  {/* Frets for this string */}
-                  {Array.from({ length: fretsToShow }).map((_, fretNumIndex) => {
-                    const fretNum = startFret + fretNumIndex;
-                    const note = getNoteAtPosition(stringIndex, fretNum);
-                    const isNatural = isNaturalNote(note);
-                    const showNote = shouldShowNote(note, stringIndex, fretNum);
-                    const isActive = highlightNote === note;
-                    const isQuizPosition = quizPosition && stringIndex === quizPosition.string && fretNum === quizPosition.fret;
-                    const isHovering = hoverPosition && hoverPosition.string === stringIndex && hoverPosition.fret === fretNum;
-
-                    return (
-                      <div
-                        key={`string-${stringIndex}-fret-${fretNum}`}
-                        className={`flex-1 relative flex items-center justify-center ${
-                          fretNum === 0 ? 'bg-secondary-100 dark:bg-secondary-700/50' : ''
-                        } min-h-[44px] ${fretNum > 0 ? 'border-l border-secondary-400 dark:border-secondary-600' : ''}
-                          ${isQuizPosition ? 'bg-yellow-100 dark:bg-yellow-900/20' : ''}`}
-                        onMouseEnter={() => mode !== 'explore' && setHoverPosition({ string: stringIndex, fret: fretNum })}
-                        onMouseLeave={() => setHoverPosition(null)}
-                        onClick={() => isQuizPosition || handleNoteClick(stringIndex, fretNum, note)}
-                      >
-                        {/* Rendered note */}
-                        {(showNote || (mode === 'identify' && isQuizPosition)) && (
-                          <div
-                            className={`w-9 h-9 rounded-full flex items-center justify-center text-sm cursor-pointer
-                              ${
-                                isActive || (quizResult === 'correct' && note === quizNote)
-                                  ? 'bg-primary-600 text-white'
-                                  : isQuizPosition && !showAnswer
-                                  ? 'bg-yellow-400 dark:bg-yellow-600 text-white'
-                                  : isNatural
-                                  ? 'bg-secondary-800 dark:bg-secondary-200 text-white dark:text-secondary-800'
-                                  : 'bg-secondary-200 dark:bg-secondary-700 text-secondary-800 dark:text-secondary-200'
-                              }
-                              hover:scale-110 transition-transform
-                            `}
-                          >
-                            {isQuizPosition && !showAnswer ? '?' : note}
-                          </div>
-                        )}
-
-                        {/* Show empty circle on hover in practice modes */}
-                        {mode !== 'explore' && 
-                         !showNote && 
-                         !(mode === 'identify' && isQuizPosition) && 
-                         isHovering && (
-                          <div className="w-9 h-9 rounded-full border-2 border-dashed border-secondary-400 dark:border-secondary-500 flex items-center justify-center">
-                            {/* Empty circle for hovering */}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Fret markers below the fretboard */}
-          <div className="flex h-6 mt-1">
-            <div className="w-10 flex-shrink-0"></div>
-            {Array.from({ length: fretsToShow }).map((_, fretNumIndex) => {
-              const fretNum = startFret + fretNumIndex;
-              return (
-                <div key={`marker-${fretNum}`} className="flex-1 relative flex items-center justify-center">
-                  {/* Single dots */}
-                  {[3, 5, 7, 9, 15, 17, 19, 21].includes(fretNum) && (
-                    <div className="w-3 h-3 rounded-full bg-secondary-300 dark:bg-secondary-600"></div>
-                  )}
-                  {/* Double dots */}
-                  {[12, 24].includes(fretNum) && (
-                    <div className="flex gap-3">
-                      <div className="w-3 h-3 rounded-full bg-primary-400 dark:bg-primary-600"></div>
-                      <div className="w-3 h-3 rounded-full bg-primary-400 dark:bg-primary-600"></div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
-      
-      {highlightNote && mode === 'explore' && (
-        <div className="mt-4 p-3 bg-secondary-50 dark:bg-secondary-800/30 rounded-lg">
-          <h3 className="font-medium mb-1">Highlighted Note: {highlightNote}</h3>
+
+      <div className="bg-white dark:bg-secondary-900 p-4 rounded-lg shadow-inner overflow-x-auto">
+        <Fretboard
+          tuning={STANDARD_TUNING}
+          fretCount={FRET_COUNT}
+          startFret={startFret}
+          visibleFretCount={VISIBLE_FRET_COUNT}
+          renderNote={renderNote}
+          renderFretMarker={(fret) => <FretboardMarker fret={fret} />}
+          renderStringLabel={(stringIndex, note) => (
+            <div className="w-10 flex-shrink-0 flex items-center justify-center font-semibold text-primary-700 dark:text-primary-300">
+              {mode === 'explore' ? note : `${6 - stringIndex}`}
+            </div>
+          )}
+        />
+      </div>
+
+      {/* Practice Mode Instructions and Feedback */}
+      {mode !== 'explore' && (
+        <div className="mt-4 bg-secondary-50 dark:bg-secondary-800/30 rounded-lg overflow-hidden">
+          <div className="bg-gradient-to-r from-primary/20 to-primary/5 dark:from-primary/30 dark:to-primary/10 p-3">
+            <h3 className="font-semibold">
+              {mode === 'identify' && 'Identify Notes Practice'}
+              {mode === 'find' && 'Find Notes Practice'}
+              {mode === 'octaves' && 'Find Octaves Practice'}
+            </h3>
+          </div>
+          
+          <div className="p-4">
+            {mode === 'identify' && (
+              <>
+                <p className="text-sm mb-4">Click on the highlighted position and select the correct note.</p>
+                <div className="grid grid-cols-6 sm:grid-cols-12 gap-2">
+                  {ALL_NOTES.map((note) => (
+                    <button
+                      key={note}
+                      onClick={() => {
+                        if (!quizPosition) return;
+                        const openStringNoteIndex = ALL_NOTES.indexOf(STANDARD_TUNING[quizPosition.string]);
+                        const noteIndex = (openStringNoteIndex + quizPosition.fret) % 12;
+                        const correctNote = ALL_NOTES[noteIndex];
+                        setUserAnswer(note);
+                        if (note === correctNote) {
+                          setQuizResult('correct');
+                          setTimeout(() => {
+                            generateQuizQuestion();
+                          }, 2000); // Increased from 1500ms to 2000ms for consistency
+                        } else {
+                          setQuizResult('incorrect');
+                        }
+                      }}
+                      className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium
+                        ${
+                          userAnswer === note
+                            ? userAnswer === quizNote
+                              ? 'bg-green-500 text-white'
+                              : 'bg-red-500 text-white'
+                            : isNaturalNote(note)
+                            ? 'bg-secondary-800 dark:bg-secondary-200 text-white dark:text-secondary-800'
+                            : 'bg-secondary-200 dark:bg-secondary-700 text-secondary-800 dark:text-secondary-200'
+                        }
+                        hover:scale-110 transition-transform
+                      `}
+                    >
+                      {note}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {mode === 'find' && (
+              <>
+                <p className="text-sm mb-2">Find all occurrences of note: <span className="font-semibold">{quizNote}</span></p>
+                <p className="text-sm text-secondary-600 dark:text-secondary-400">
+                  Found {foundPositions.length} of {totalPositionsToFind} positions
+                </p>
+                {foundPositions.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {foundPositions.map((pos, index) => (
+                      <span key={index} className="px-2 py-1 text-xs bg-secondary-100 dark:bg-secondary-700 rounded">
+                        String {pos.string + 1}, Fret {pos.fret}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {mode === 'octaves' && (
+              <>
+                <p className="text-sm mb-2">Find octaves of <span className="font-semibold">{highlightNote}</span> starting from string {initialOctavePosition ? initialOctavePosition.string + 1 : ''}, fret {initialOctavePosition ? initialOctavePosition.fret : ''}</p>
+                <div className="text-sm space-y-2">
+                  <p className="font-medium mb-2">Rules for finding octaves:</p>
+                  <p className="flex items-center">
+                    <span className="w-2 h-2 bg-primary-500 rounded-full mr-2"></span>
+                    Same string: Move up 12 frets
+                  </p>
+                  <p className="flex items-center">
+                    <span className="w-2 h-2 bg-primary-500 rounded-full mr-2"></span>
+                    Two strings up: Move back 3 frets
+                  </p>
+                  <p className="flex items-center">
+                    <span className="w-2 h-2 bg-primary-500 rounded-full mr-2"></span>
+                    Two strings down: Move up 3 frets
+                  </p>
+                  <div className="mt-4 p-3 bg-secondary-100 dark:bg-secondary-800 rounded">
+                    <p className="font-medium">Progress:</p>
+                    <p>Found {foundOctaves.length} of {totalOctaves} octaves</p>
+                    {foundOctaves.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {foundOctaves.map((pos, index) => (
+                          <span key={index} className="px-2 py-1 text-xs bg-secondary-200 dark:bg-secondary-700 rounded">
+                            String {pos.string + 1}, Fret {pos.fret}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {quizResult && (
+              <div className={`mt-4 p-3 rounded ${
+                quizResult === 'correct' 
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
+                  : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+              }`}>
+                {quizResult === 'correct' 
+                  ? (mode === 'find' && foundPositions.length < totalPositionsToFind)
+                    ? 'Correct! Keep going, find more positions...'
+                    : 'Correct! Moving to next question...'
+                  : 'Incorrect. Try again or use "Show Answer" for help.'}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Exploration Mode Info */}
+      {mode === 'explore' && highlightNote && (
+        <div className="mt-4 p-4 bg-secondary-50 dark:bg-secondary-800/30 rounded-lg">
+          <h3 className="font-medium mb-2">Highlighted Note: {highlightNote}</h3>
           <p className="text-sm text-secondary-600 dark:text-secondary-400">
             Click on notes to highlight them across the fretboard. Click again to clear.
           </p>

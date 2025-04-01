@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useRef } from 'react';
 import FretboardDisplay from '@/components/FretboardDisplay';
 
 export default function FretboardPage() {
-  const [activePracticeMode/*, setActivePracticeMode*/] = useState<boolean>(false);
   const fretboardRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -18,7 +17,7 @@ export default function FretboardPage() {
       </p>
 
       <div ref={fretboardRef} className="w-full max-w-5xl mb-12">
-        <FretboardDisplay showPractice={activePracticeMode} />
+        <FretboardDisplay showPractice={true} />
       </div>
 
       <div className="w-full max-w-5xl mb-12">
