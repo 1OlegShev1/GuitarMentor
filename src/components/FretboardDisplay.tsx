@@ -4,10 +4,7 @@ import React, { useState, useEffect, useCallback, Dispatch, SetStateAction } fro
 import { Fretboard } from './Fretboard';
 import { FretboardNote, FretboardNoteProps, NoteDisplayState } from './FretboardNote';
 import { FretboardMarker } from './FretboardMarker';
-import { NotePosition, ALL_NOTES } from '@/hooks/useFretboard';
-
-// Standard guitar tuning notes (from 6th string to 1st)
-const STANDARD_TUNING = ['E', 'A', 'D', 'G', 'B', 'E'];
+import { NotePosition, ALL_NOTES, STANDARD_TUNING } from '@/hooks/useFretboard';
 
 // Base MIDI note numbers for standard tuning (E2=40)
 // REMOVE const BASE_MIDI_NOTES = [40, 45, 50, 55, 59, 64]; 
@@ -479,14 +476,17 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
     // Determine state based on displayMode and practiceMode (only if not already hidden)
     if (state !== 'hidden') {
        if (displayMode === 'scale') {
-         if (!scaleNotes || !scaleNotes.includes(note)) {
+         // Check if part of the specifically highlighted pattern FIRST
+         const isHighlighted = highlightedPattern && highlightedPattern.some(p => p.string === position.string && p.fret === position.fret);
+
+         if (isHighlighted) {
+           state = 'pattern_highlight';
+         } else if (!scaleNotes || !scaleNotes.includes(note)) {
            state = 'hidden';
+         } else if (rootNote === note) {
+           state = 'root'; // Check root note next
          } else {
-           state = 'pattern_member'; // Base state for scale notes
-           if (rootNote === note) {
-             state = 'root'; // Override if it's the root
-           }
-           // Could add check for highlightedPattern here if needed
+           state = 'pattern_member'; // Otherwise, it's just a regular scale member
          }
        } else if (displayMode === 'caged' && cagedShape) {
          const cagedPosition = cagedShape.positions.find(p => p.string === position.string && p.fret === position.fret);
@@ -761,14 +761,17 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
               // Determine state based on displayMode and practiceMode (only if not already hidden)
               if (state !== 'hidden') { 
                  if (displayMode === 'scale') {
-                   if (!scaleNotes || !scaleNotes.includes(note)) {
+                   // Check if part of the specifically highlighted pattern FIRST
+                   const isHighlighted = highlightedPattern && highlightedPattern.some(p => p.string === position.string && p.fret === position.fret);
+
+                   if (isHighlighted) {
+                     state = 'pattern_highlight';
+                   } else if (!scaleNotes || !scaleNotes.includes(note)) {
                      state = 'hidden';
+                   } else if (rootNote === note) {
+                     state = 'root'; // Check root note next
                    } else {
-                     state = 'pattern_member'; // Base state for scale notes
-                     if (rootNote === note) {
-                       state = 'root'; // Override if it's the root
-                     }
-                     // Could add check for highlightedPattern here if needed
+                     state = 'pattern_member'; // Otherwise, it's just a regular scale member
                    }
                  } else if (displayMode === 'caged' && cagedShape) {
                    const cagedPosition = cagedShape.positions.find(p => p.string === position.string && p.fret === position.fret);

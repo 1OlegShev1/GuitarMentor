@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import FretboardDisplay from './FretboardDisplay';
-import { NotePosition, ALL_NOTES } from '@/hooks/useFretboard';
+import { NotePosition, ALL_NOTES, STANDARD_TUNING } from '@/hooks/useFretboard';
 
 // Common scale types with their interval patterns
 const SCALE_TYPES = {
@@ -83,8 +83,8 @@ type ScaleType = keyof typeof SCALE_TYPES;
 // Scale positions - key patterns that highlight common fingering positions
 interface ScalePositionDef {
   name: string;
-  startFret: number;
-  patternFrets: number[][];
+  rootStringIndex: number;
+  relativeFrets: number[][];
 }
 
 type ScalePositionsMap = {
@@ -94,99 +94,35 @@ type ScalePositionsMap = {
 const SCALE_POSITIONS: ScalePositionsMap = {
   minorPentatonic: [
     {
-      name: 'Position 1',
-      startFret: 0,
-      patternFrets: [[0, 3], [0, 3], [0, 2], [0, 2], [0, 3], [0, 3]]
+      name: 'Position 1 (Root 6th Str)',
+      rootStringIndex: 0,
+      relativeFrets: [[0, 3], [0, 2], [0, 2], [0, 2], [0, 3], [0, 3]],
     },
     {
-      name: 'Position 2',
-      startFret: 3,
-      patternFrets: [[3, 5], [3, 5], [2, 5], [2, 5], [3, 5], [3, 5]]
+      name: 'Position 2 (Root 4th Str)',
+      rootStringIndex: 2,
+      relativeFrets: [[0, 2], [0, 2], [-1, 2], [-1, 2], [0, 3], [0, 2]],
     },
     {
-      name: 'Position 3',
-      startFret: 5,
-      patternFrets: [[5, 8], [5, 8], [5, 7], [5, 7], [5, 8], [5, 8]]
+      name: 'Position 3 (Root 5th Str)',
+      rootStringIndex: 1,
+      relativeFrets: [[0, 2], [0, 2], [-1, 2], [-1, 2], [0, 2], [0, 2]],
     },
     {
-      name: 'Position 4',
-      startFret: 7,
-      patternFrets: [[8, 10], [7, 10], [7, 10], [7, 9], [8, 10], [8, 10]]
+      name: 'Position 4 (Root 3rd Str)',
+      rootStringIndex: 3,
+      relativeFrets: [[0, 3], [0, 2], [0, 2], [-1, 2], [0, 3], [0, 3]],
     },
     {
-      name: 'Position 5',
-      startFret: 10,
-      patternFrets: [[10, 12], [10, 12], [10, 12], [9, 12], [10, 12], [10, 12]]
+      name: 'Position 5 (Root 2nd Str)',
+      rootStringIndex: 4,
+      relativeFrets: [[0, 2], [0, 3], [0, 2], [0, 2], [-1, 2], [0, 2]],
     },
   ],
-  major: [
-    {
-      name: 'Position 1',
-      startFret: 0,
-      patternFrets: [
-        [0, 2, 3],
-        [0, 2, 3],
-        [0, 2],
-        [0, 2],
-        [0, 2, 3],
-        [0, 2, 3],
-      ]
-    },
-    {
-      name: 'Position 2',
-      startFret: 2,
-      patternFrets: [
-        [3, 5],
-        [3, 5],
-        [2, 4, 5],
-        [2, 4],
-        [3, 5],
-        [3, 5],
-      ]
-    },
-  ],
-  minor: [
-    {
-      name: 'Position 1',
-      startFret: 0,
-      patternFrets: [
-        [0, 3],
-        [0, 2, 3],
-        [0, 2],
-        [0, 2],
-        [0, 3],
-        [0, 3],
-      ]
-    },
-  ],
-  blues: [
-    {
-      name: 'Position 1',
-      startFret: 0,
-      patternFrets: [
-        [0, 3],
-        [0, 3],
-        [0, 2],
-        [0, 1, 2],
-        [0, 3],
-        [0, 3],
-      ]
-    },
-  ],
-  majorPentatonic: [
-    {
-      name: 'Position 1',
-      startFret: 0,
-      patternFrets: [
-        [0, 2],
-        [0, 2],
-        [0, 2],
-        [0, 2],
-        [0, 2],
-        [0, 2],
-      ]
-    },
-  ],
+  major: [],
+  minor: [],
+  blues: [],
+  majorPentatonic: [],
 };
 
 const ScaleExplorer: React.FC = () => {
@@ -206,7 +142,7 @@ const ScaleExplorer: React.FC = () => {
 
   // Get available positions for the current scale type
   const availablePositions = React.useMemo(() => {
-    return SCALE_POSITIONS[scaleType] || [];
+    return SCALE_POSITIONS[scaleType]?.filter(p => p.relativeFrets) || [];
   }, [scaleType]);
 
   // Calculate the NotePosition[] for the highlighted pattern
@@ -217,14 +153,35 @@ const ScaleExplorer: React.FC = () => {
     const positionDef = availablePositions[selectedPositionIndex - 1];
     if (!positionDef) return [];
 
+    const { rootStringIndex, relativeFrets } = positionDef;
+    const rootNoteMidi = ALL_NOTES.indexOf(rootNote);
+    if (rootNoteMidi === -1) return [];
+
+    let rootFret = -1;
+    const openStringMidi = ALL_NOTES.indexOf(STANDARD_TUNING[rootStringIndex]);
+    for (let fret = 0; fret < 15; fret++) {
+        if ((openStringMidi + fret) % 12 === rootNoteMidi) {
+            rootFret = fret;
+            break;
+        }
+    }
+
+    if (rootFret === -1) {
+        console.warn(`Could not find root note ${rootNote} on string ${rootStringIndex} for position ${positionDef.name}`);
+        return [];
+    }
+
     const patternNotes: NotePosition[] = [];
-    positionDef.patternFrets.forEach((fretsOnString, stringIndex) => {
-      fretsOnString.forEach(fret => {
-        patternNotes.push({ string: stringIndex, fret: fret });
+    relativeFrets.forEach((fretsOnString, stringIdx) => {
+      fretsOnString.forEach(relativeFret => {
+        const absoluteFret = rootFret + relativeFret;
+        if (absoluteFret >= 0 && absoluteFret <= 24) { 
+            patternNotes.push({ string: stringIdx, fret: absoluteFret });
+        }
       });
     });
     return patternNotes;
-  }, [selectedPositionIndex, availablePositions]);
+  }, [rootNote, selectedPositionIndex, availablePositions]);
 
   return (
     <div className="w-full flex flex-col md:flex-row gap-8">
@@ -270,20 +227,29 @@ const ScaleExplorer: React.FC = () => {
               onChange={(e) => setSelectedPositionIndex(parseInt(e.target.value, 10))}
               className="w-full p-2 rounded border bg-white dark:bg-secondary-800 dark:border-secondary-700"
             >
-              <option value={0}>Show All Notes</option>
+              <option value="0">All Positions</option>
               {availablePositions.map((pos, index) => (
-                <option key={index + 1} value={index + 1}>{pos.name}</option>
+                <option key={index + 1} value={index + 1}>
+                  {pos.name}
+                </option>
               ))}
             </select>
           </div>
         )}
+
+        <div className="text-sm">
+          <p className="font-semibold">{SCALE_TYPES[scaleType].name} Scale</p>
+          <p>Notes: {currentScaleNotes.join(', ')}</p>
+          <p className="mt-2 italic text-gray-600 dark:text-gray-400">{SCALE_TYPES[scaleType].description}</p>
+        </div>
+
       </div>
 
-      <div className="md:w-3/4">
+      <div className="flex-1">
         <FretboardDisplay
           displayMode="scale"
-          scaleNotes={currentScaleNotes}
           rootNote={rootNote}
+          scaleNotes={currentScaleNotes}
           highlightedPattern={highlightedPattern}
         />
       </div>
@@ -291,4 +257,4 @@ const ScaleExplorer: React.FC = () => {
   );
 };
 
-export default ScaleExplorer; 
+export default ScaleExplorer;

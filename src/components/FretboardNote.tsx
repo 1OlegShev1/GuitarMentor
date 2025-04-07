@@ -17,6 +17,7 @@ export type NoteDisplayState =
   // | 'quiz_incorrect' // Maybe just use 'quiz_reveal' visually?
   | 'target_found'      // Find mode found note state (green)
   | 'quiz_incorrect_click' // NEW: Find mode temporary incorrect click feedback
+  | 'pattern_highlight' // NEW: Scale explorer specific position highlight
   | 'caged_finger'      // CAGED finger number display
   | 'caged_root';       // CAGED root note display (might overlap with 'root')
 
@@ -103,10 +104,17 @@ export const FretboardNote: React.FC<FretboardNoteProps> = ({
       textClasses = 'text-white';
       scaleClasses = 'scale-110 hover:scale-110'; // Already scaled?
       break;
-    case 'pattern_member': // Example for scales
+    case 'pattern_member': // Example for scales (less emphasis)
       displayContent = note;
       backgroundClasses = 'bg-teal-100 dark:bg-teal-900';
       textClasses = 'text-teal-800 dark:text-teal-200';
+      break;
+    case 'pattern_highlight': // NEW: Highlighted pattern note (more emphasis)
+      displayContent = note;
+      backgroundClasses = 'bg-teal-400 dark:bg-teal-600'; // Brighter teal
+      textClasses = 'text-teal-900 dark:text-teal-100 font-medium';
+      borderClasses = 'border border-teal-600 dark:border-teal-400'; // Add border
+      scaleClasses = 'scale-105'; // Slight scale up
       break;
     case 'caged_finger': // Use note prop directly (parent sends finger number)
       displayContent = note;

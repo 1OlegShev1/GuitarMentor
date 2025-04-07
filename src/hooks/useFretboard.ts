@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react';
 
 // All music notes
 export const ALL_NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+// Standard guitar tuning notes (from 6th string/index 0 to 1st string/index 5)
+export const STANDARD_TUNING = ['E', 'A', 'D', 'G', 'B', 'E'];
 
 export interface NotePosition {
   string: number;
