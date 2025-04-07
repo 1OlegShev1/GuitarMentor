@@ -17,7 +17,7 @@ export default function FretboardPage() {
       </p>
 
       <div ref={fretboardRef} className="w-full max-w-5xl mb-12">
-        <FretboardDisplay showPractice={true} />
+        <FretboardDisplay displayMode="practice" />
       </div>
 
       <div className="w-full max-w-5xl mb-12">

@@ -225,10 +225,12 @@ The Fretboard Navigator helps users learn and memorize the notes on the guitar f
    - Feedback shows if your answer is correct or incorrect
 
 **Technical implementation:**
-- Located in `src/components/FretboardDisplay.tsx`
-- Uses React state management for tracking highlight state, practice modes, and quiz states
-- Dynamic rendering based on mode (explore vs. practice)
-- Note position calculation: `(openStringNoteIndex + fret) % 12`
+- Located in `src/app/fretboard/page.tsx`, which renders the `FretboardDisplay` component.
+- Uses `<FretboardDisplay displayMode="practice" />`.
+- Practice modes (Identify, Find, Octaves) and explore sub-mode are managed internally within `FretboardDisplay` using the `practiceMode` state.
+- Cross-note highlighting is handled by the `crossHighlightNote` state within `FretboardDisplay`.
+- Note visibility and styling logic resides within `FretboardDisplay` and `FretboardNote`, varying based on `displayMode` and `practiceMode`.
+- Note position calculation: `(openStringNoteIndex + fret) % 12`.
 
 ## Scale Explorer
 
@@ -251,10 +253,12 @@ The Scale Explorer allows users to visualize and learn different scales on the g
    - Finger placement recommendations
 
 **Technical implementation:**
-- Located in `src/components/ScaleExplorer.tsx`
-- Uses Tonal.js for scale calculations and music theory
-- Scale patterns are mapped to fretboard positions
-- Positions are calculated based on scale formulas and starting frets
+- Located in `src/components/ScaleExplorer.tsx`.
+- Renders the central `<FretboardDisplay displayMode="scale" ... />` component.
+- Passes `scaleNotes`, `rootNote`, and `highlightedPattern` props to `FretboardDisplay`.
+- `ScaleExplorer` manages state for selected `rootNote`, `scaleType`, and `selectedPositionIndex`.
+- Calculates `scaleNotes` and `highlightedPattern` based on selected scale/position and passes them down.
+- Fretboard rendering and note styling logic is handled by `FretboardDisplay` and `FretboardNote`.
 
 ## CAGED System
 
@@ -277,9 +281,12 @@ The CAGED System page helps users understand the five basic chord shapes (C, A, 
    - Highlights chord tones within scales
 
 **Technical implementation:**
-- Located in `src/components/CagedSystemDisplay.tsx`
-- Chord shapes are defined as position patterns
-- Transitions between shapes are calculated based on root note positions
+- Located in `src/components/CagedSystemDisplay.tsx`.
+- Renders the central `<FretboardDisplay displayMode="caged" ... />` component.
+- Manages state for the selected CAGED shape key (`selectedShapeKey`).
+- Transforms raw shape data (using 1-based string index) into the `CagedShapeData` format (0-based index) using `transformShapeData` helper.
+- Passes the transformed `cagedShape` data prop to `FretboardDisplay`.
+- `FretboardDisplay` handles the rendering of notes (showing finger numbers), barre lines, and muted strings based on the `cagedShape` prop and `displayMode="caged"`.
 
 ## Chord Progressions
 

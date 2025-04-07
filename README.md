@@ -21,6 +21,13 @@ A comprehensive application for learning guitar, including scales, CAGED system,
 - Pitchy (for pitch detection)
 - Tonal.js (for music theory calculations)
 
+## Key Architectural Patterns
+
+*   **State Management:** Zustand is used for global state where necessary, while local component state (`useState`, `useReducer`) is preferred for component-specific data.
+*   **Styling:** Tailwind CSS is used for utility-first styling.
+* **Component Structure:** Components are organized by feature or shared utility within the `src/components` directory.
+*   **Fretboard Rendering:** A specific pattern using a `NoteDisplayState` enum is employed for flexible and maintainable fretboard note rendering. See [docs/fretboard-rendering.md](docs/fretboard-rendering.md) for details.
+
 ## Getting Started
 
 First, install the dependencies:

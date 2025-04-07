@@ -32,30 +32,30 @@ This document outlines the architecture of the Guitar Mentor application.
 
 ### Fretboard Navigator
 
-Located in `/app/fretboard` and using the `FretboardDisplay` component, this feature helps users learn the notes on the guitar fretboard through visualization and interactive exercises.
+Located in `/app/fretboard` and using the central `FretboardDisplay` component with `displayMode="practice"`, this feature helps users learn the notes on the guitar fretboard through visualization and interactive exercises.
 
 **Key functionality:**
 - Interactive fretboard display
-- Note highlighting and identification
-- Practice modes for note memorization
+- Cross-note highlighting (click a note to see all instances)
+- Practice modes (Identify, Find Notes, Octaves) managed internally by `FretboardDisplay`
 
 ### Scale Explorer
 
 Located in `/app/scales` and using the `ScaleExplorer` component, this feature allows users to explore different guitar scales, positions, and patterns.
 
 **Key functionality:**
-- Scale visualization on the fretboard
+- Scale visualization via `FretboardDisplay` (passes `scaleNotes`, `rootNote`, `highlightedPattern` props)
 - Scale selection (major, minor, pentatonic, etc.)
-- Scale theory information
+- Position highlighting within the scale
 
 ### CAGED System
 
 Located in `/app/caged` and using the `CagedSystemDisplay` component, this feature teaches the CAGED system for understanding chord shapes and positions.
 
 **Key functionality:**
-- Visualization of the five CAGED positions
-- Interactive chord shape display
-- Connection between chord shapes and scale patterns
+- Visualization of CAGED shapes via `FretboardDisplay` (passes `cagedShape` prop)
+- Displays fingerings, barre lines, and muted strings
+- Interactive selection of different CAGED shapes (C, A, G, E, D)
 
 ### Chord Progressions
 
