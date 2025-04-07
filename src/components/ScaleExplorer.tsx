@@ -119,11 +119,167 @@ const SCALE_POSITIONS: ScalePositionsMap = {
       relativeFrets: [[0, 2], [0, 3], [0, 2], [0, 2], [-1, 2], [0, 2]],
     },
   ],
-  major: [],
-  minor: [],
-  blues: [],
-  majorPentatonic: [],
+  major: [
+    {
+      name: 'Position 1 (E Shape)',
+      rootStringIndex: 0, 
+      relativeFrets: [[0, 2, 4], [0, 2, 4], [1, 2, 4], [1, 2, 4], [2, 4, 5], [2, 4, 5]]
+    },
+    {
+      name: 'Position 2 (D Shape)',
+      rootStringIndex: 2,
+      relativeFrets: [[-2, 0, 2], [-2, 0, 2], [0, 2, 3], [0, 2, 4], [0, 2, 3], [-2, 0, 2]]
+    },
+    {
+      name: 'Position 3 (C Shape)',
+      rootStringIndex: 4,
+      relativeFrets: [[-1, 0, 2], [-1, 0, 2], [-1, 0, 2], [-1, 0, 2], [0, 2, 3], [0, 2, 3]]
+    },
+    {
+      name: 'Position 4 (A Shape)',
+      rootStringIndex: 1,
+      relativeFrets: [[0, 2, 3], [0, 2, 4], [0, 2, 4], [1, 2, 4], [1, 3, 4], [1, 3, 4]]
+    },
+    {
+      name: 'Position 5 (G Shape)',
+      rootStringIndex: 3,
+      relativeFrets: [[0, 2, 4], [1, 2, 4], [1, 2, 4], [1, 3, 4], [2, 4, 5], [2, 4]]
+    }
+  ],
+  minor: [
+    {
+      name: 'Position 1 (Em Shape)',
+      rootStringIndex: 0,
+      relativeFrets: [[0, 2, 3], [0, 2, 3], [0, 2, 4], [0, 2, 4], [1, 2, 4], [1, 3, 4]]
+    },
+    {
+      name: 'Position 2 (Dm Shape)',
+      rootStringIndex: 2,
+      relativeFrets: [[0, 1, 3], [0, 1, 3], [0, 2, 3], [0, 2, 4], [0, 2], [1, 3]]
+    },
+    {
+      name: 'Position 3 (Cm Shape)',
+      rootStringIndex: 4,
+      relativeFrets: [[-2, 0, 1], [-2, 0, 1], [-2, 0, 2], [-1, 0, 2], [-1, 0, 2], [-2, 0]]
+    },
+    {
+      name: 'Position 4 (Am Shape)',
+      rootStringIndex: 1,
+      relativeFrets: [[0, 2, 3], [0, 2, 3], [0, 2, 4], [0, 2], [1, 3], [0, 2]]
+    },
+    {
+      name: 'Position 5 (Gm Shape)',
+      rootStringIndex: 3,
+      relativeFrets: [[0, 1, 3], [0, 2, 3], [0, 2, 3], [0, 2], [1, 3], [0, 1]]
+    }
+  ],
+  blues: [
+    {
+      name: 'Position 1',
+      rootStringIndex: 0, 
+      relativeFrets: [[0, 3], [0, 2], [0, 2], [0, 1, 2], [0, 3], [0, 3]] 
+    },
+    {
+      name: 'Position 2',
+      rootStringIndex: 2, 
+      relativeFrets: [[0, 2], [0, 2], [-1, 2], [-1, 0, 2], [0, 3], [0, 2]]
+    },
+    {
+      name: 'Position 3',
+      rootStringIndex: 1,
+      relativeFrets: [[0, 2], [0, 2], [-1, 1, 2], [-1, 2], [0, 2], [0, 2]]
+    },
+    {
+      name: 'Position 4',
+      rootStringIndex: 3, 
+      relativeFrets: [[0, 3], [0, 2], [0, 2], [-1, 2], [-1, 1, 2], [0, 3]]
+    },
+    {
+      name: 'Position 5',
+      rootStringIndex: 4,
+      relativeFrets: [[0, 2], [0, 3], [0, 2], [0, 2], [-1, 2], [0, 1, 2]]
+    }
+  ],
+  majorPentatonic: [
+    {
+      name: 'Position 1',
+      rootStringIndex: 0,
+      relativeFrets: [[0, 2], [0, 2], [-1, 1], [-1, 1], [0, 2], [0, 2]]
+    },
+    {
+      name: 'Position 2',
+      rootStringIndex: 1,
+      relativeFrets: [[-3, -1], [0, 2], [-1, 1], [-1, 1], [0, 2], [0, 2]]
+    },
+    {
+      name: 'Position 3',
+      rootStringIndex: 2,
+      relativeFrets: [[-2, 0], [-3, -1], [0, 2], [-1, 1], [0, 2], [-3, -1]]
+    },
+    {
+      name: 'Position 4',
+      rootStringIndex: 3,
+      relativeFrets: [[-2, 0], [-1, 1], [-1, 1], [-2, 0], [0, 2], [-2, 0]]
+    },
+    {
+      name: 'Position 5',
+      rootStringIndex: 4,
+      relativeFrets: [[-2, 0], [-1, 1], [-1, 1], [-2, 0], [-2, 0], [-1, 1]]
+    }
+  ],
 };
+
+// --- Helper to generate a basic pattern rooted on 6th string ---
+// (Simplified: Returns a small box including notes from the scale intervals)
+function generateRootOn6thPattern(scaleIntervals: number[], rootNote: string): ScalePositionDef | null {
+  const rootNoteMidi = ALL_NOTES.indexOf(rootNote);
+  if (rootNoteMidi === -1) return null;
+
+  const scaleNoteIndices = new Set(scaleIntervals.map(interval => (rootNoteMidi + interval) % 12));
+
+  let rootFret = -1;
+  const openStringMidi = ALL_NOTES.indexOf(STANDARD_TUNING[0]); // Low E string
+  for (let fret = 0; fret < 15; fret++) {
+      if ((openStringMidi + fret) % 12 === rootNoteMidi) {
+          rootFret = fret;
+          break;
+      }
+  }
+  if (rootFret === -1) return null; // Cannot find root on 6th string
+
+  const relativeFrets: number[][] = [[], [], [], [], [], []];
+  const fretSpan = 4; // Generate notes within this many frets from root
+
+  for (let stringIdx = 0; stringIdx < 6; stringIdx++) {
+    const currentOpenStringMidi = ALL_NOTES.indexOf(STANDARD_TUNING[stringIdx]);
+    for (let fretOffset = 0; fretOffset <= fretSpan; fretOffset++) {
+      const absoluteFret = rootFret + fretOffset;
+      const noteIndex = (currentOpenStringMidi + absoluteFret) % 12;
+      if (scaleNoteIndices.has(noteIndex)) {
+        // Calculate fret relative to rootFret on 6th string
+        relativeFrets[stringIdx].push(absoluteFret - rootFret);
+      }
+      // Also check one fret below rootFret for completeness in some shapes
+      if (fretOffset === 0 && rootFret > 0) { 
+         const prevAbsoluteFret = rootFret - 1;
+         const prevNoteIndex = (currentOpenStringMidi + prevAbsoluteFret) % 12;
+          if (scaleNoteIndices.has(prevNoteIndex)) {
+             relativeFrets[stringIdx].push(prevAbsoluteFret - rootFret);
+          }
+      }
+    }
+    // Sort and remove duplicates for cleanliness
+    // Convert Set to Array before sorting for compatibility
+    relativeFrets[stringIdx] = Array.from(new Set(relativeFrets[stringIdx])).sort((a, b) => a - b);
+  }
+
+  return {
+    name: 'Root on 6th String (Auto)',
+    rootStringIndex: 0,
+    relativeFrets: relativeFrets
+  };
+}
+// --- End Helper ---
 
 const ScaleExplorer: React.FC = () => {
   const [rootNote, setRootNote] = useState<string>('A');
@@ -140,48 +296,85 @@ const ScaleExplorer: React.FC = () => {
     });
   }, [rootNote, scaleType]);
 
-  // Get available positions for the current scale type
+  // Get available positions for the current scale type (ONLY explicitly defined ones)
   const availablePositions = React.useMemo(() => {
-    return SCALE_POSITIONS[scaleType]?.filter(p => p.relativeFrets) || [];
+    // Return only positions defined in the constant
+    return SCALE_POSITIONS[scaleType]?.filter(p => p.relativeFrets) || []; 
   }, [scaleType]);
 
   // Calculate the NotePosition[] for the highlighted pattern
   const highlightedPattern = React.useMemo((): NotePosition[] => {
-    if (selectedPositionIndex === 0 || availablePositions.length === 0) {
-      return [];
-    }
-    const positionDef = availablePositions[selectedPositionIndex - 1];
-    if (!positionDef) return [];
+    const explicitPositions = SCALE_POSITIONS[scaleType]?.filter(p => p.relativeFrets) || [];
 
-    const { rootStringIndex, relativeFrets } = positionDef;
-    const rootNoteMidi = ALL_NOTES.indexOf(rootNote);
-    if (rootNoteMidi === -1) return [];
+    // Case 1: Explicit positions exist AND a specific one is selected
+    if (explicitPositions.length > 0 && selectedPositionIndex > 0) {
+      const positionDef = explicitPositions[selectedPositionIndex - 1];
+      if (!positionDef) return []; // Safety check
 
-    let rootFret = -1;
-    const openStringMidi = ALL_NOTES.indexOf(STANDARD_TUNING[rootStringIndex]);
-    for (let fret = 0; fret < 15; fret++) {
-        if ((openStringMidi + fret) % 12 === rootNoteMidi) {
-            rootFret = fret;
-            break;
-        }
-    }
+      const { rootStringIndex, relativeFrets } = positionDef;
+      const rootNoteMidi = ALL_NOTES.indexOf(rootNote);
+      if (rootNoteMidi === -1) return [];
 
-    if (rootFret === -1) {
-        console.warn(`Could not find root note ${rootNote} on string ${rootStringIndex} for position ${positionDef.name}`);
-        return [];
-    }
+      let rootFret = -1;
+      const openStringMidi = ALL_NOTES.indexOf(STANDARD_TUNING[rootStringIndex]);
+      for (let fret = 0; fret < 15; fret++) {
+          if ((openStringMidi + fret) % 12 === rootNoteMidi) {
+              rootFret = fret;
+              break;
+          }
+      }
+      if (rootFret === -1) {
+          console.warn(`Could not find root note ${rootNote} on string ${rootStringIndex} for position ${positionDef.name}`);
+          return [];
+      }
 
-    const patternNotes: NotePosition[] = [];
-    relativeFrets.forEach((fretsOnString, stringIdx) => {
-      fretsOnString.forEach(relativeFret => {
-        const absoluteFret = rootFret + relativeFret;
-        if (absoluteFret >= 0 && absoluteFret <= 24) { 
-            patternNotes.push({ string: stringIdx, fret: absoluteFret });
-        }
+      const patternNotes: NotePosition[] = [];
+      relativeFrets.forEach((fretsOnString, stringIdx) => {
+        fretsOnString.forEach(relativeFret => {
+          const absoluteFret = rootFret + relativeFret;
+          if (absoluteFret >= 0 && absoluteFret <= 24) { 
+              patternNotes.push({ string: stringIdx, fret: absoluteFret });
+          }
+        });
       });
-    });
-    return patternNotes;
-  }, [rootNote, selectedPositionIndex, availablePositions]);
+      return patternNotes;
+    } 
+    // Case 2: NO explicit positions defined for this scale type
+    else if (explicitPositions.length === 0 && scaleType !== 'wholeTone') {
+       // Automatically generate and return the Root on 6th fallback pattern
+       const fallbackPatternDef = generateRootOn6thPattern(SCALE_TYPES[scaleType].intervals, rootNote);
+       if (!fallbackPatternDef) return []; // Could not generate fallback
+
+       // Need to calculate absolute frets for the fallback
+       const { rootStringIndex, relativeFrets } = fallbackPatternDef;
+       const rootNoteMidi = ALL_NOTES.indexOf(rootNote);
+       if (rootNoteMidi === -1) return [];
+       let rootFret = -1;
+       const openStringMidi = ALL_NOTES.indexOf(STANDARD_TUNING[rootStringIndex]);
+       for (let fret = 0; fret < 15; fret++) {
+           if ((openStringMidi + fret) % 12 === rootNoteMidi) {
+               rootFret = fret;
+               break;
+           }
+       }
+       if (rootFret === -1) return [];
+       
+       const patternNotes: NotePosition[] = [];
+       relativeFrets.forEach((fretsOnString, stringIdx) => {
+          fretsOnString.forEach(relativeFret => {
+            const absoluteFret = rootFret + relativeFret;
+            if (absoluteFret >= 0 && absoluteFret <= 24) { 
+                patternNotes.push({ string: stringIdx, fret: absoluteFret });
+            }
+          });
+       });
+       return patternNotes;
+    }
+    
+    // Case 3: "All Positions" selected or other cases
+    return []; // Return empty array to show all scale notes without specific highlighting
+
+  }, [rootNote, scaleType, selectedPositionIndex, availablePositions]); // Include scaleType here
 
   return (
     <div className="w-full flex flex-col md:flex-row gap-8">
