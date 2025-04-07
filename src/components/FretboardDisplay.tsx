@@ -590,25 +590,25 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
             <div className="flex gap-2">
               <button
                 onClick={() => setPracticeMode('explore')}
-                className={`px-3 py-1 rounded ${practiceMode === 'explore' ? 'bg-blue-500 text-white' : 'bg-gray-300 dark:bg-gray-600'}`}
+                className={`px-3 py-1 rounded ${practiceMode === 'explore' ? 'bg-primary text-gray-900 dark:text-white shadow' : 'bg-gray-300 dark:bg-gray-600'}`}
               >
                 Explore
               </button>
               <button
-                onClick={() => { setPracticeMode('identify'); generateQuizQuestion(); }}
-                className={`px-3 py-1 rounded ${practiceMode === 'identify' ? 'bg-blue-500 text-white' : 'bg-gray-300 dark:bg-gray-600'}`}
+                onClick={() => { setPracticeMode('identify'); /* generateQuizQuestion(); Let useEffect handle */ }}
+                className={`px-3 py-1 rounded ${practiceMode === 'identify' ? 'bg-primary text-gray-900 dark:text-white shadow' : 'bg-gray-300 dark:bg-gray-600'}`}
               >
                 Identify Note
               </button>
               <button
-                onClick={() => { setPracticeMode('find'); generateQuizQuestion(); }}
-                className={`px-3 py-1 rounded ${practiceMode === 'find' ? 'bg-blue-500 text-white' : 'bg-gray-300 dark:bg-gray-600'}`}
+                onClick={() => { setPracticeMode('find'); /* generateQuizQuestion(); */ }}
+                className={`px-3 py-1 rounded ${practiceMode === 'find' ? 'bg-primary text-gray-900 dark:text-white shadow' : 'bg-gray-300 dark:bg-gray-600'}`}
               >
                 Find Notes
               </button>
               <button
                 onClick={() => { setPracticeMode('octaves'); /* generateQuizQuestion(); */ }}
-                className={`px-3 py-1 rounded ${practiceMode === 'octaves' ? 'bg-blue-500 text-white' : 'bg-gray-300 dark:bg-gray-600'}`}
+                className={`px-3 py-1 rounded ${practiceMode === 'octaves' ? 'bg-primary text-gray-900 dark:text-white shadow' : 'bg-gray-300 dark:bg-gray-600'}`}
               >
                 Octaves
               </button>
