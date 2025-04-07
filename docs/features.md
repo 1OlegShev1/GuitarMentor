@@ -200,10 +200,10 @@ The Fretboard Navigator helps users learn and memorize the notes on the guitar f
    - Option to show/hide all notes
 
 3. **Practice Modes**
-   - **Identify Notes**: Quiz mode where a position is highlighted and you must identify the note
-   - **Find Notes**: Asks you to find all occurrences of a specific note on the fretboard
+   - **Identify Notes**: Quiz mode where a position is highlighted and you must identify the note. The "Natural Notes Only" filter is disabled in this mode.
+   - **Find Notes**: Asks you to find all occurrences of a specific note (`quizNote`) on the fretboard. The fretboard starts blank with clickable placeholders in every position. Clicking a correct position reveals the note; clicking an incorrect position gives temporary feedback. The "Natural Notes Only" filter, if checked, restricts the `quizNote` chosen to only natural notes.
    - **Notes by String**: Focus on learning one string at a time
-   - **Octave Shapes**: Learn to find octaves of notes across the fretboard
+   - **Octaves**: Asks you to find all occurrences of a note with the same name as a given starting note (`initialOctavePosition`). The fretboard starts by showing the `initialOctavePosition` and clickable placeholders elsewhere. Clicking a position with the correct note name reveals it; clicking an incorrect position (wrong note name, or the starting note again) gives temporary feedback. The "Natural Notes Only" filter, if checked, restricts the starting note chosen to only natural notes.
 
 ### Usage Instructions:
 
@@ -227,10 +227,19 @@ The Fretboard Navigator helps users learn and memorize the notes on the guitar f
 **Technical implementation:**
 - Located in `src/app/fretboard/page.tsx`, which renders the `FretboardDisplay` component.
 - Uses `<FretboardDisplay displayMode="practice" />`.
-- Practice modes (Identify, Find, Octaves) and explore sub-mode are managed internally within `FretboardDisplay` using the `practiceMode` state.
+- Practice modes (Identify, Find, Octaves) and explore sub-mode are managed internally within `FretboardDisplay` using the following state variables:
+  - `practiceMode`: Determines the active mode ('explore', 'identify', 'find', 'octaves').
+  - `quizNote`, `quizPosition`: Used in 'identify' mode.
+  - `quizNote`, `foundPositions`, `totalPositionsToFind`: Used in 'find' mode.
+  - `crossHighlightNote`, `initialOctavePosition`, `foundOctaves`, `totalOctaves`: Used in 'octaves' mode.
+  - `incorrectClickPos`: Used temporarily in 'find' and 'octaves' modes for visual feedback on incorrect clicks.
+  - `showNaturalOnly`: Affects question generation in 'find' and 'octaves' modes.
 - Cross-note highlighting is handled by the `crossHighlightNote` state within `FretboardDisplay`.
 - Note visibility and styling logic resides within `FretboardDisplay` and `FretboardNote`, varying based on `displayMode` and `practiceMode`.
-- Note position calculation: `(openStringNoteIndex + fret) % 12`.
+- Note visibility and styling follows the `NoteDisplayState` pattern (see `docs/fretboard-rendering.md`). The inline `renderNote` function within `FretboardDisplay` calculates the appropriate `NoteDisplayState` (e.g., `root`, `placeholder_clickable`, `target_found`, `quiz_incorrect_click`, `hidden`) based on the current mode and state.
+- The `Fretboard` component's `renderNote` prop now accepts `(stringIndex, fretNum)`.
+- The `handleNoteClick` function recalculates the clicked note internally based on the received `position` and handles interaction logic for each `practiceMode`, updating state accordingly.
+- Note position calculation: `(openStringNoteIndex + fret) % 12` is used within `renderNote` and `handleNoteClick`.
 
 ## Scale Explorer
 
