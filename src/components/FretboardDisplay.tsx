@@ -9,6 +9,9 @@ import { NotePosition, ALL_NOTES } from '@/hooks/useFretboard';
 // Standard guitar tuning notes (from 6th string to 1st)
 const STANDARD_TUNING = ['E', 'A', 'D', 'G', 'B', 'E'];
 
+// Base MIDI note numbers for standard tuning (E2=40)
+// REMOVE const BASE_MIDI_NOTES = [40, 45, 50, 55, 59, 64]; 
+
 // Number of frets to display
 const FRET_COUNT = 24;
 
@@ -130,47 +133,12 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
     return count;
   };
 
-  // Re-inserted helper function to check if a position is a valid octave
+  // REMOVE Unused helper function to check if a position is a valid octave shape
+  /*
   const isValidOctave = (fromPos: NotePosition, toPos: NotePosition): boolean => {
-    const stringDiff = toPos.string - fromPos.string; // Positive: higher index string (visually lower), Negative: lower index string (visually higher)
-    const fretDiff = toPos.fret - fromPos.fret;
-
-    // --- Same String ---
-    if (stringDiff === 0 && Math.abs(fretDiff) === 12) {
-      return true;
-    }
-
-    // --- One String Apart ---
-    if (Math.abs(stringDiff) === 1) {
-      const isToHigherIndex = stringDiff === 1; // Moving to a string like E -> A (0 -> 1)
-      const isFromHigherIndex = stringDiff === -1; // Moving to a string like A -> E (1 -> 0)
-
-      // Check crossing G <-> B boundary (string indices 3 and 4)
-      const crossesGB = (fromPos.string === 3 && toPos.string === 4) || (fromPos.string === 4 && toPos.string === 3);
-      const expectedFretDiff = crossesGB ? 8 : 7;
-
-      if (isToHigherIndex && fretDiff === expectedFretDiff) return true; // E.g., E@5 -> A@12 (+1 string, +7 frets) or G@5 -> B@13 (+1 string, +8 frets)
-      if (isFromHigherIndex && fretDiff === -expectedFretDiff) return true; // E.g., A@12 -> E@5 (-1 string, -7 frets) or B@13 -> G@5 (-1 string, -8 frets)
-    }
-
-    // --- Two Strings Apart ---
-    if (Math.abs(stringDiff) === 2) {
-       const isToHigherIndex = stringDiff === 2; // Moving to a string like E -> D (0 -> 2)
-       const isFromHigherIndex = stringDiff === -2; // Moving to a string like D -> E (2 -> 0)
-
-       // Check if the interval crosses the G-B boundary
-       const crossesGB =
-         (fromPos.string <= 3 && toPos.string >= 4) || // e.g., D(2) -> B(4) crosses
-         (fromPos.string >= 4 && toPos.string <= 3); // e.g., B(4) -> D(2) crosses
-
-       const expectedFretDiff = crossesGB ? 3 : 2;
-
-       if (isToHigherIndex && fretDiff === expectedFretDiff) return true; // E.g., E@5 -> D@7 (+2 strings, +2 frets) or G@5 -> E(1st)@8 (+2 strings, +3 frets)
-       if (isFromHigherIndex && fretDiff === -expectedFretDiff) return true; // E.g., D@7 -> E@5 (-2 strings, -2 frets) or E(1st)@8 -> G@5 (-2 strings, -3 frets)
-    }
-
-    return false;
+    // ... implementation ...
   };
+  */
 
   // Adjust generateQuizQuestion based on internal practiceMode state
   const generateQuizQuestion = () => {
@@ -215,28 +183,40 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
       }
       setTotalPositionsToFind(count);
     } else if (practiceMode === 'octaves') {
-      const randomNote = ALL_NOTES[Math.floor(Math.random() * ALL_NOTES.length)];
-      setCrossHighlightNote(randomNote);
-      setFoundOctaves([]);
-      setQuizResult(null);
-      setShowAnswer(false);
-      
-      // Find all possible positions for this note
-      const positions: NotePosition[] = [];
-      for (let string = 0; string < 6; string++) {
-        for (let fret = startFret; fret <= startFret + VISIBLE_FRET_COUNT - 1; fret++) {
-          const openStringNoteIndex = ALL_NOTES.indexOf(STANDARD_TUNING[string]);
-          const noteIndex = (openStringNoteIndex + fret) % 12;
-          if (ALL_NOTES[noteIndex] === randomNote) {
-            positions.push({ string, fret });
+      // --- START: Ensure Octaves mode logic with guaranteed starting note ---
+      let randomNote = null;
+      let positions: NotePosition[] = [];
+      let initialPosition: NotePosition | null = null;
+
+      // Loop until we find a note with at least one occurrence in the visible range
+      while (positions.length === 0) {
+        randomNote = ALL_NOTES[Math.floor(Math.random() * ALL_NOTES.length)];
+        positions = []; // Reset for the new note check
+        for (let string = 0; string < 6; string++) {
+          // Check only within the visible fret range
+          for (let fret = startFret; fret <= startFret + VISIBLE_FRET_COUNT - 1; fret++) {
+            const openStringNoteIndex = ALL_NOTES.indexOf(STANDARD_TUNING[string]);
+            const noteIndex = (openStringNoteIndex + fret) % 12;
+            if (ALL_NOTES[noteIndex] === randomNote) {
+              positions.push({ string, fret });
+            }
           }
         }
       }
+      // We now have a note (randomNote) guaranteed to be present 
+      // in `positions` within the visible fret range.
+
+      setCrossHighlightNote(randomNote); 
+      setFoundOctaves([]); 
+      setQuizResult(null);
+      setShowAnswer(false);
       
-      // Randomly select one position as the initial position
-      const initialPosition = positions[Math.floor(Math.random() * positions.length)];
+      // Randomly select the initial position from the guaranteed non-empty `positions` array
+      initialPosition = positions[Math.floor(Math.random() * positions.length)];
       setInitialOctavePosition(initialPosition);
-      setTotalOctaves(calculateTotalOctaves(randomNote) - 1); // Subtract 1 because we show one position
+      // Total octaves to find is the number of occurrences found MINUS the one we are showing as the start point
+      setTotalOctaves(positions.length - 1);
+      // --- END: Octaves mode logic ---
     }
   };
 
@@ -258,11 +238,16 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
   };
 
   // Handle clicks on the fretboard notes themselves
-  const handleNoteClick = (position: NotePosition, note: string) => {
+  const handleNoteClick = (position: NotePosition) => { 
+    // Recalculate note inside handler based on position
+    const openStringNoteIndex = ALL_NOTES.indexOf(STANDARD_TUNING[position.string]);
+    const noteIndex = (openStringNoteIndex + position.fret) % 12;
+    const clickedNote = ALL_NOTES[noteIndex];
+
     if (displayMode !== 'practice') {
-      // Handle clicks in non-practice modes (e.g., explore, scale)
-      setCrossHighlightNote(note === crossHighlightNote ? null : note);
-      setSelectedString(null); // Deselect string on note click
+      // Use recalculated note for cross-highlight
+      setCrossHighlightNote(clickedNote === crossHighlightNote ? null : clickedNote); 
+      setSelectedString(null); 
       return;
     }
 
@@ -272,48 +257,77 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
         // Clicks on notes are disabled in identify mode; use answer buttons
         break;
       case 'find':
-        // Original logic for handling clicks in find mode
-        if (note === quizNote && !foundPositions.some(p => p.string === position.string && p.fret === position.fret)) {
+        // Use recalculated note for comparison
+        if (clickedNote === quizNote && !foundPositions.some(p => p.string === position.string && p.fret === position.fret)) {
           const newFoundPositions = [...foundPositions, position];
           setFoundPositions(newFoundPositions);
-          // Optional: Check if all found
           if (newFoundPositions.length === totalPositionsToFind) {
-            // Trigger next question or show completion message
-             setTimeout(() => generateQuizQuestion(), 1000); // Example: Next question after 1 sec
+             setTimeout(() => generateQuizQuestion(), 1000); 
           }
-        } else if (note !== quizNote) {
-          // --- NEW: Handle incorrect click in Find mode ---
-          setIncorrectClickPos(position); // Mark this position as incorrect
+        } else if (clickedNote !== quizNote) { // Use recalculated note
+          setIncorrectClickPos(position); 
           setTimeout(() => {
-            setIncorrectClickPos(null); // Clear the mark after a short delay
-          }, 500); // 0.5 second delay for feedback
+            setIncorrectClickPos(null); 
+          }, 500); 
         }
         break;
       case 'octaves':
-        // Original logic for handling clicks in octaves mode
-        if (note === crossHighlightNote) {
-          if (!initialOctavePosition) {
-            // First click sets the starting point
+        // Logic for handling clicks in octaves mode
+        if (!initialOctavePosition) {
+          // Use recalculated note for check
+          if (clickedNote === crossHighlightNote) { 
             setInitialOctavePosition(position);
-             const total = calculateTotalOctaves(note);
-             setTotalOctaves(total);
-             setFoundOctaves([position]); // Start with the clicked note
-          } else if (isValidOctave(initialOctavePosition, position) && !foundOctaves.some(p => p.string === position.string && p.fret === position.fret)) {
-             // Subsequent clicks add valid octaves
-             const newFoundOctaves = [...foundOctaves, position];
-             setFoundOctaves(newFoundOctaves);
-             // Optional: Check if all found
-             if (newFoundOctaves.length === totalOctaves) {
-                setTimeout(() => generateQuizQuestion(), 1000);
-             }
+            const total = calculateTotalOctaves(clickedNote); // Use recalculated note
+            setTotalOctaves(total - 1); 
+            setFoundOctaves([position]); 
+          }
+        } else {
+          // We have a starting position
+          // REMOVE Absolute pitch calculation
+          // const initialAbsolutePitch = BASE_MIDI_NOTES[initialOctavePosition.string] + initialOctavePosition.fret;
+          // const clickedAbsolutePitch = BASE_MIDI_NOTES[position.string] + position.fret;
+          // const pitchDifference = clickedAbsolutePitch - initialAbsolutePitch;
+          // const isCorrectInterval = Math.abs(pitchDifference) === 12;
+
+          // REINSTATE Note Name check
+          const isCorrectNote = (clickedNote === crossHighlightNote); 
+          const isAlreadyFound = foundOctaves.some(p => p.string === position.string && p.fret === position.fret);
+          const isInitialPosition = initialOctavePosition.string === position.string && initialOctavePosition.fret === position.fret;
+          
+          // Log details
+          console.log('[handleNoteClick Octaves] Name Check:', { 
+            initial: initialOctavePosition, 
+            clicked: position, 
+            clickedNote, 
+            targetNote: crossHighlightNote,
+            isCorrectNote,
+            isInitialPosition,
+            isAlreadyFound
+          }); 
+
+          // Check if it's the correct note name, not the initial position, and not already found
+          if (isCorrectNote && !isInitialPosition && !isAlreadyFound) { 
+            console.log('[handleNoteClick Octaves] CORRECT octave found (note name match).'); 
+            const newFoundOctaves = [...foundOctaves, position];
+            setFoundOctaves(newFoundOctaves);
+            if (newFoundOctaves.length >= totalOctaves + 1) { 
+              setTimeout(() => generateQuizQuestion(), 1000);
+            }
+          } else if (!isAlreadyFound && !isInitialPosition) { // Only mark incorrect if not already found and not the root
+             // Incorrect click (wrong note name, or duplicate)
+             console.log('[handleNoteClick Octaves] INCORRECT click detected (wrong note name or duplicate).'); 
+             setIncorrectClickPos(position); 
+             setTimeout(() => {
+               setIncorrectClickPos(null); 
+             }, 500); 
           }
         }
         break;
       case 'explore':
       default:
-        // Default explore behavior (within practice)
-        setCrossHighlightNote(note === crossHighlightNote ? null : note);
-        setSelectedString(null); // Deselect string on note click
+        // Use recalculated note
+        setCrossHighlightNote(clickedNote === crossHighlightNote ? null : clickedNote); 
+        setSelectedString(null); 
         break;
     }
   };
@@ -376,47 +390,60 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
   // Adjust useEffect to depend on internal practiceMode
   useEffect(() => {
     if (displayMode === 'practice' && practiceMode !== 'explore') {
+      // Generate question for identify, find, octaves
       generateQuizQuestion();
     } else {
       // Reset states when exiting practice mode or changing display mode
       setQuizNote(null);
       setQuizPosition(null);
-      // ... reset other practice states ...
+      setCrossHighlightNote(null); // Move reset here
+      // ... other potential resets when not in active practice ...
       if (displayMode !== 'practice') {
         setPracticeMode('explore'); // Reset internal practice mode if display mode changes
       }
     }
-    setCrossHighlightNote(null); // Clear cross-highlight when mode changes
-    // Reset practice states when exiting or changing display mode
+    // setCrossHighlightNote(null); // REMOVE from here: Called too late, cleared Octaves state
+    
+    // Reset practice states when exiting or changing display mode, or entering explore mode
     if (displayMode !== 'practice' || (displayMode === 'practice' && practiceMode === 'explore')) {
       setShowAnswer(false);
       setQuizResult(null);
       setUserAnswer(null);
       setFoundPositions([]);
       setFoundOctaves([]);
-      setQuizNote(null);
-      setQuizPosition(null);
+      // Keep quizNote/quizPosition reset in the else block above
+      // setQuizNote(null);
+      // setQuizPosition(null);
       setInitialOctavePosition(null);
+      // Also ensure crossHighlightNote is cleared when explicitly going to explore
+      if (practiceMode === 'explore') {
+        setCrossHighlightNote(null);
+      }
     }
   }, [displayMode, practiceMode]); // Re-run if displayMode or practiceMode changes
 
   // Adjust handleModeChange to update internal practiceMode
   const handleModeChange = (newMode: FretboardMode) => {
     setPracticeMode(newMode); // Update internal state
-    setCrossHighlightNote(null); // Clear cross-highlight when changing practice sub-mode
-    // Reset other sub-states as before
-    setShowAnswer(false);
+    // REMOVE Redundant Resets: useEffect handles resetting these correctly
+    // setCrossHighlightNote(null); 
+    // setInitialOctavePosition(null);
+
+    // Keep other resets specific to changing modes if needed
+    setShowAnswer(false); 
     setQuizResult(null);
     setUserAnswer(null);
     setFoundPositions([]);
     setFoundOctaves([]);
-    setQuizNote(null); // Ensure quiz note is reset here too
+    setQuizNote(null); 
     setQuizPosition(null);
-    setInitialOctavePosition(null);
   };
 
   // Adjust renderNote based on displayMode and crossHighlightNote
-  const renderNote = (position: NotePosition) => {
+  const renderNote = (stringIndex: number, fretNum: number) => {
+    // Create position object here
+    const position: NotePosition = { string: stringIndex, fret: fretNum };
+
     // --- Calculate Note --- 
     const openStringNoteIndex = ALL_NOTES.indexOf(STANDARD_TUNING[position.string]);
     const noteIndex = (openStringNoteIndex + position.fret) % 12;
@@ -486,19 +513,18 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
              // or filter settings, until the note is revealed as 'target_found'.
              break;
            case 'octaves':
-             if (note === crossHighlightNote) {
-               const isInitial = initialOctavePosition?.string === position.string && initialOctavePosition?.fret === position.fret;
-               const isFoundOctave = foundOctaves.some(p => p.string === position.string && p.fret === position.fret);
-               
-               if (isInitial) {
-                  state = 'root';
-               } else if (isFoundOctave) {
-                   state = 'target_found';
-               } else {
-                   state = 'placeholder_clickable'; // Use placeholder for unfound
-               }
+             const isInitial = initialOctavePosition?.string === position.string && initialOctavePosition?.fret === position.fret;
+             const isFoundOctave = foundOctaves.some(p => p.string === position.string && p.fret === position.fret);
+             const isIncorrectOctaveClick = incorrectClickPos?.string === position.string && incorrectClickPos?.fret === position.fret;
+
+             if (isInitial) {
+               state = 'root'; // Show starting note
+             } else if (isIncorrectOctaveClick) {
+               state = 'quiz_incorrect_click'; // Show temporary incorrect feedback
+             } else if (isFoundOctave) {
+               state = 'target_found'; // Show found octaves
              } else {
-               state = 'hidden'; // Hide notes not matching the octave target
+               state = 'placeholder_clickable'; // Show placeholders everywhere else
              }
              break;
            case 'explore':
@@ -525,7 +551,7 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
     // --- Render Component Based on State --- 
     const commonProps = {
        position: position,
-       onClick: () => handleNoteClick(position, note),
+       onClick: () => handleNoteClick(position),
        onMouseEnter: () => setHoverPosition(position),
        onMouseLeave: () => setHoverPosition(null),
     };
@@ -535,7 +561,7 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
          return null;
        case 'placeholder_clickable':
          // Pass note to handler even though it's hidden
-         return <ClickablePlaceholder onClick={() => handleNoteClick(position, note)} />;
+         return <ClickablePlaceholder onClick={() => handleNoteClick(position)} />;
        case 'caged_finger':
        case 'caged_root':
          // Use noteTextOverride for CAGED display
@@ -574,7 +600,7 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
                 Find Notes
               </button>
               <button
-                onClick={() => { setPracticeMode('octaves'); generateQuizQuestion(); }}
+                onClick={() => { setPracticeMode('octaves'); /* generateQuizQuestion(); */ }}
                 className={`px-3 py-1 rounded ${practiceMode === 'octaves' ? 'bg-blue-500 text-white' : 'bg-gray-300 dark:bg-gray-600'}`}
               >
                 Octaves
@@ -615,9 +641,7 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
                   `Find all ${quizNote} notes (${foundPositions.length}/${totalPositionsToFind} found)`
               )}
               {practiceMode === 'octaves' && crossHighlightNote && initialOctavePosition && (
-                  initialOctavePosition ? 
-                     `Find all octaves of ${crossHighlightNote} starting from string ${6 - initialOctavePosition.string}, fret ${initialOctavePosition.fret} (${foundOctaves.length}/${totalOctaves} found)` :
-                     `Click a ${crossHighlightNote} note to start finding its octaves.`
+                  `Find all octaves of ${crossHighlightNote} starting from string ${6 - initialOctavePosition.string}, fret ${initialOctavePosition.fret} (${foundOctaves.length}/${totalOctaves} found)`
               )}
               {practiceMode === 'explore' && (
                   `Explore the fretboard.`
@@ -702,15 +726,18 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
             startFret={startFret}
             visibleFretCount={VISIBLE_FRET_COUNT}
             tuning={STANDARD_TUNING}
-            renderNote={(position) => {
+            renderNote={(stringIndex, fretNum) => {
+              // Create position object here
+              const position: NotePosition = { string: stringIndex, fret: fretNum };
+
               // --- Calculate Note --- 
               const openStringNoteIndex = ALL_NOTES.indexOf(STANDARD_TUNING[position.string]);
               const noteIndex = (openStringNoteIndex + position.fret) % 12;
               const note = ALL_NOTES[noteIndex];
-
+              
               // --- Determine Display State --- 
-              let state: NoteDisplayState = 'default'; // Start with default
-              let noteTextOverride: string | null = null; // For CAGED fingers
+              let state: NoteDisplayState = 'default'; 
+              let noteTextOverride: string | null = null; 
 
               // Apply filters first
               if (showNaturalOnly && note.includes('#') && !(practiceMode === 'find' && note === quizNote) && !(practiceMode === 'octaves' && note === crossHighlightNote)) {
@@ -772,19 +799,18 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
                        // or filter settings, until the note is revealed as 'target_found'.
                        break;
                      case 'octaves':
-                       if (note === crossHighlightNote) {
-                         const isInitial = initialOctavePosition?.string === position.string && initialOctavePosition?.fret === position.fret;
-                         const isFoundOctave = foundOctaves.some(p => p.string === position.string && p.fret === position.fret);
-                         
-                         if (isInitial) {
-                            state = 'root';
-                         } else if (isFoundOctave) {
-                             state = 'target_found';
-                         } else {
-                             state = 'placeholder_clickable'; // Use placeholder for unfound
-                         }
+                       const isInitial = initialOctavePosition?.string === position.string && initialOctavePosition?.fret === position.fret;
+                       const isFoundOctave = foundOctaves.some(p => p.string === position.string && p.fret === position.fret);
+                       const isIncorrectOctaveClick = incorrectClickPos?.string === position.string && incorrectClickPos?.fret === position.fret;
+
+                       if (isInitial) {
+                         state = 'root'; // Show starting note
+                       } else if (isIncorrectOctaveClick) {
+                         state = 'quiz_incorrect_click'; // Show temporary incorrect feedback
+                       } else if (isFoundOctave) {
+                         state = 'target_found'; // Show found octaves
                        } else {
-                         state = 'hidden';
+                         state = 'placeholder_clickable'; // Show placeholders everywhere else
                        }
                        break;
                      case 'explore':
@@ -811,7 +837,7 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
               // --- Render Component Based on State --- 
               const commonProps = {
                  position: position,
-                 onClick: () => handleNoteClick(position, note),
+                 onClick: () => handleNoteClick(position),
                  onMouseEnter: () => setHoverPosition(position),
                  onMouseLeave: () => setHoverPosition(null),
               };
@@ -821,7 +847,7 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
                    return null;
                  case 'placeholder_clickable':
                    // Pass note to handler even though it's hidden
-                   return <ClickablePlaceholder onClick={() => handleNoteClick(position, note)} />;
+                   return <ClickablePlaceholder onClick={() => handleNoteClick(position)} />;
                  case 'caged_finger':
                  case 'caged_root':
                    // Use noteTextOverride for CAGED display

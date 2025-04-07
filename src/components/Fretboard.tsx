@@ -5,7 +5,7 @@ interface FretboardProps {
   tuning: string[];
   startFret: number;
   visibleFretCount: number;
-  renderNote: (position: NotePosition) => React.ReactNode;
+  renderNote: (stringIndex: number, fretNum: number) => React.ReactNode;
   renderStringLabel?: (stringIndex: number, note: string) => React.ReactNode;
   className?: string;
 }
@@ -43,14 +43,13 @@ export const Fretboard: React.FC<FretboardProps> = ({
 
               <div className="flex flex-1">
                 {visibleFrets.map((fretNum) => {
-                  const position: NotePosition = { string: stringIndex, fret: fretNum };
                   return (
                     <div
                       key={`string-${stringIndex}-fret-${fretNum}`}
                       className={`flex-1 relative flex items-center justify-center border-r border-gray-300 dark:border-gray-600 last:border-r-0`}
                     >
                       <div className="z-10">
-                        {renderNote(position)}
+                        {renderNote(stringIndex, fretNum)}
                       </div>
                     </div>
                   );
