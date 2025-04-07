@@ -112,6 +112,9 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
   // Add a state for the initial octave position
   const [initialOctavePosition, setInitialOctavePosition] = useState<NotePosition | null>(null);
 
+  // --- NEW: State for temporary incorrect click feedback in Find mode ---
+  const [incorrectClickPos, setIncorrectClickPos] = useState<NotePosition | null>(null);
+
   // Calculate total octaves for the current note
   const calculateTotalOctaves = (note: string) => {
     let count = 0;
@@ -278,6 +281,12 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
             // Trigger next question or show completion message
              setTimeout(() => generateQuizQuestion(), 1000); // Example: Next question after 1 sec
           }
+        } else if (note !== quizNote) {
+          // --- NEW: Handle incorrect click in Find mode ---
+          setIncorrectClickPos(position); // Mark this position as incorrect
+          setTimeout(() => {
+            setIncorrectClickPos(null); // Clear the mark after a short delay
+          }, 500); // 0.5 second delay for feedback
         }
         break;
       case 'octaves':
@@ -418,7 +427,7 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
     let noteTextOverride: string | null = null; // For CAGED fingers
 
     // Apply filters first
-    if (showNaturalOnly && note.includes('#')) {
+    if (showNaturalOnly && note.includes('#') && !(practiceMode === 'find' && note === quizNote) && !(practiceMode === 'octaves' && note === crossHighlightNote)) {
        state = 'hidden';
     }
     if (selectedString !== null && position.string !== selectedString) {
@@ -462,36 +471,54 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
              }
              break;
            case 'find':
-             if (note === quizNote) {
-               const isFound = foundPositions.some(p => p.string === position.string && p.fret === position.fret);
-               state = isFound ? 'target_found' : 'placeholder_clickable';
+             const isFound = foundPositions.some(p => p.string === position.string && p.fret === position.fret);
+             const isIncorrect = incorrectClickPos?.string === position.string && incorrectClickPos?.fret === position.fret;
+
+             if (isIncorrect) {
+               state = 'quiz_incorrect_click'; // Show temporary incorrect feedback
+             } else if (isFound) {
+               state = 'target_found'; // Show green if found
              } else {
-               state = 'placeholder_non_clickable';
+               state = 'placeholder_clickable'; // NEW: Show clickable placeholder for unfound/unclicked
              }
+             // Filters (like showNaturalOnly, selectedString) should NOT apply here, 
+             // as the goal is to click placeholders, regardless of the underlying note 
+             // or filter settings, until the note is revealed as 'target_found'.
              break;
            case 'octaves':
              if (note === crossHighlightNote) {
                const isInitial = initialOctavePosition?.string === position.string && initialOctavePosition?.fret === position.fret;
                const isFoundOctave = foundOctaves.some(p => p.string === position.string && p.fret === position.fret);
-               // Basic display for now - enhance later if needed
+               
                if (isInitial) {
-                  state = 'root'; // Style start note as root
+                  state = 'root';
                } else if (isFoundOctave) {
-                   state = 'target_found'; // Found octaves green?
+                   state = 'target_found';
                } else {
-                   state = 'default'; // Show other potential octaves normally
+                   state = 'placeholder_clickable'; // Use placeholder for unfound
                }
              } else {
-               state = 'hidden';
+               state = 'hidden'; // Hide notes not matching the octave target
              }
              break;
            case 'explore':
            default:
-             state = crossHighlightNote === note ? 'highlighted' : 'default';
+             // Ensure crossHighlightNote takes precedence over filters in explore mode
+             state = crossHighlightNote === note ? 'highlighted' : 'default'; 
+             // Re-apply filters if not highlighted and state is still default
+             if (state === 'default') {
+                if (showNaturalOnly && note.includes('#')) { state = 'hidden'; }
+                if (selectedString !== null && position.string !== selectedString) { state = 'hidden'; }
+             }
              break;
          }
        } else { // Default 'explore' mode outside practice
          state = crossHighlightNote === note ? 'highlighted' : 'default';
+          // Apply filters if not highlighted
+          if (state === 'default') {
+             if (showNaturalOnly && note.includes('#')) { state = 'hidden'; }
+             if (selectedString !== null && position.string !== selectedString) { state = 'hidden'; }
+          }
        }
     }
 
@@ -509,8 +536,6 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
        case 'placeholder_clickable':
          // Pass note to handler even though it's hidden
          return <ClickablePlaceholder onClick={() => handleNoteClick(position, note)} />;
-       case 'placeholder_non_clickable':
-         return <NonClickablePlaceholder />;
        case 'caged_finger':
        case 'caged_root':
          // Use noteTextOverride for CAGED display
@@ -688,7 +713,7 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
               let noteTextOverride: string | null = null; // For CAGED fingers
 
               // Apply filters first
-              if (showNaturalOnly && note.includes('#')) {
+              if (showNaturalOnly && note.includes('#') && !(practiceMode === 'find' && note === quizNote) && !(practiceMode === 'octaves' && note === crossHighlightNote)) {
                  state = 'hidden';
               }
               if (selectedString !== null && position.string !== selectedString) {
@@ -732,24 +757,31 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
                        }
                        break;
                      case 'find':
-                       if (note === quizNote) {
-                         const isFound = foundPositions.some(p => p.string === position.string && p.fret === position.fret);
-                         state = isFound ? 'target_found' : 'placeholder_clickable';
+                       const isFound = foundPositions.some(p => p.string === position.string && p.fret === position.fret);
+                       const isIncorrect = incorrectClickPos?.string === position.string && incorrectClickPos?.fret === position.fret;
+
+                       if (isIncorrect) {
+                         state = 'quiz_incorrect_click'; // Show temporary incorrect feedback
+                       } else if (isFound) {
+                         state = 'target_found'; // Show green if found
                        } else {
-                         state = 'placeholder_non_clickable';
+                         state = 'placeholder_clickable'; // NEW: Show clickable placeholder for unfound/unclicked
                        }
+                       // Filters (like showNaturalOnly, selectedString) should NOT apply here, 
+                       // as the goal is to click placeholders, regardless of the underlying note 
+                       // or filter settings, until the note is revealed as 'target_found'.
                        break;
                      case 'octaves':
                        if (note === crossHighlightNote) {
                          const isInitial = initialOctavePosition?.string === position.string && initialOctavePosition?.fret === position.fret;
                          const isFoundOctave = foundOctaves.some(p => p.string === position.string && p.fret === position.fret);
-                         // Basic display for now - enhance later if needed
+                         
                          if (isInitial) {
-                            state = 'root'; // Style start note as root
+                            state = 'root';
                          } else if (isFoundOctave) {
-                             state = 'target_found'; // Found octaves green?
+                             state = 'target_found';
                          } else {
-                             state = 'default'; // Show other potential octaves normally
+                             state = 'placeholder_clickable'; // Use placeholder for unfound
                          }
                        } else {
                          state = 'hidden';
@@ -757,11 +789,22 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
                        break;
                      case 'explore':
                      default:
-                       state = crossHighlightNote === note ? 'highlighted' : 'default';
+                       // Ensure crossHighlightNote takes precedence over filters in explore mode
+                       state = crossHighlightNote === note ? 'highlighted' : 'default'; 
+                       // Re-apply filters if not highlighted and state is still default
+                       if (state === 'default') {
+                          if (showNaturalOnly && note.includes('#')) { state = 'hidden'; }
+                          if (selectedString !== null && position.string !== selectedString) { state = 'hidden'; }
+                       }
                        break;
                    }
                  } else { // Default 'explore' mode outside practice
                    state = crossHighlightNote === note ? 'highlighted' : 'default';
+                    // Apply filters if not highlighted
+                    if (state === 'default') {
+                       if (showNaturalOnly && note.includes('#')) { state = 'hidden'; }
+                       if (selectedString !== null && position.string !== selectedString) { state = 'hidden'; }
+                    }
                  }
               }
 
@@ -779,8 +822,6 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
                  case 'placeholder_clickable':
                    // Pass note to handler even though it's hidden
                    return <ClickablePlaceholder onClick={() => handleNoteClick(position, note)} />;
-                 case 'placeholder_non_clickable':
-                   return <NonClickablePlaceholder />;
                  case 'caged_finger':
                  case 'caged_root':
                    // Use noteTextOverride for CAGED display

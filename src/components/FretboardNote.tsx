@@ -16,6 +16,7 @@ export type NoteDisplayState =
   | 'quiz_correct'      // Identify mode correct answer state (green)
   // | 'quiz_incorrect' // Maybe just use 'quiz_reveal' visually?
   | 'target_found'      // Find mode found note state (green)
+  | 'quiz_incorrect_click' // NEW: Find mode temporary incorrect click feedback
   | 'caged_finger'      // CAGED finger number display
   | 'caged_root';       // CAGED root note display (might overlap with 'root')
 
@@ -58,6 +59,7 @@ export const FretboardNote: React.FC<FretboardNoteProps> = ({
       textClasses = 'text-yellow-900 dark:text-yellow-100 font-bold';
       borderClasses = 'border-2 border-yellow-600 dark:border-yellow-700';
       scaleClasses = 'scale-110 ring-2 ring-yellow-600 dark:ring-yellow-700';
+      cursorClasses = 'cursor-default'; // Already found
       break;
     case 'quiz_reveal':
       displayContent = note; // Show the actual note
@@ -80,6 +82,13 @@ export const FretboardNote: React.FC<FretboardNoteProps> = ({
       textClasses = 'text-white';
       scaleClasses = 'scale-105'; // Slightly less emphasis than quiz correct?
       cursorClasses = 'cursor-default'; // Already found
+      break;
+    case 'quiz_incorrect_click': // NEW state styling
+      displayContent = 'X'; // Show an 'X' for incorrect
+      backgroundClasses = 'bg-red-500 dark:bg-red-700';
+      textClasses = 'text-white font-bold';
+      scaleClasses = 'scale-110'; // Briefly emphasize
+      cursorClasses = 'cursor-default'; // Prevent immediate re-click during feedback
       break;
     case 'root':
     case 'caged_root':
