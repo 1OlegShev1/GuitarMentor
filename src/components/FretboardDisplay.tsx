@@ -190,7 +190,18 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
 
       // Loop until we find a note with at least one occurrence in the visible range
       while (positions.length === 0) {
-        randomNote = ALL_NOTES[Math.floor(Math.random() * ALL_NOTES.length)];
+        // --- Apply natural note filtering if checkbox is checked ---
+        const availableNotes = showNaturalOnly 
+          ? ALL_NOTES.filter(n => !n.includes('#')) 
+          : ALL_NOTES;
+        if (availableNotes.length === 0) {
+          // Fallback or error - should not happen with standard ALL_NOTES
+          console.error("No available notes for Octave quiz generation?");
+          break; 
+        }
+        randomNote = availableNotes[Math.floor(Math.random() * availableNotes.length)];
+        // --- End filtering logic ---
+        
         positions = []; // Reset for the new note check
         for (let string = 0; string < 6; string++) {
           // Check only within the visible fret range
@@ -453,12 +464,16 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
     let state: NoteDisplayState = 'default'; // Start with default
     let noteTextOverride: string | null = null; // For CAGED fingers
 
-    // Apply filters first
-    if (showNaturalOnly && note.includes('#') && !(practiceMode === 'find' && note === quizNote) && !(practiceMode === 'octaves' && note === crossHighlightNote)) {
-       state = 'hidden';
-    }
-    if (selectedString !== null && position.string !== selectedString) {
-       state = 'hidden';
+    // Apply filters first - ONLY for non-practice or explore sub-mode?
+    // Let's apply general filters here, then override in practice cases if needed
+    // This might need refinement
+    if (practiceMode !== 'find' && practiceMode !== 'octaves' && practiceMode !== 'identify') {
+      if (showNaturalOnly && note.includes('#')) {
+         state = 'hidden';
+      }
+      if (selectedString !== null && position.string !== selectedString) {
+         state = 'hidden';
+      }
     }
 
     // Determine state based on displayMode and practiceMode (only if not already hidden)
@@ -500,38 +515,31 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
            case 'find':
              const isFound = foundPositions.some(p => p.string === position.string && p.fret === position.fret);
              const isIncorrect = incorrectClickPos?.string === position.string && incorrectClickPos?.fret === position.fret;
-
              if (isIncorrect) {
-               state = 'quiz_incorrect_click'; // Show temporary incorrect feedback
+               state = 'quiz_incorrect_click';
              } else if (isFound) {
-               state = 'target_found'; // Show green if found
+               state = 'target_found';
              } else {
-               state = 'placeholder_clickable'; // NEW: Show clickable placeholder for unfound/unclicked
+               state = 'placeholder_clickable';
              }
-             // Filters (like showNaturalOnly, selectedString) should NOT apply here, 
-             // as the goal is to click placeholders, regardless of the underlying note 
-             // or filter settings, until the note is revealed as 'target_found'.
              break;
-           case 'octaves':
+           case 'octaves': 
              const isInitial = initialOctavePosition?.string === position.string && initialOctavePosition?.fret === position.fret;
              const isFoundOctave = foundOctaves.some(p => p.string === position.string && p.fret === position.fret);
              const isIncorrectOctaveClick = incorrectClickPos?.string === position.string && incorrectClickPos?.fret === position.fret;
-
              if (isInitial) {
-               state = 'root'; // Show starting note
+               state = 'root';
              } else if (isIncorrectOctaveClick) {
-               state = 'quiz_incorrect_click'; // Show temporary incorrect feedback
+               state = 'quiz_incorrect_click';
              } else if (isFoundOctave) {
-               state = 'target_found'; // Show found octaves
+               state = 'target_found';
              } else {
-               state = 'placeholder_clickable'; // Show placeholders everywhere else
+               state = 'placeholder_clickable';
              }
              break;
-           case 'explore':
+           case 'explore': // Apply filters specifically in explore sub-mode
            default:
-             // Ensure crossHighlightNote takes precedence over filters in explore mode
              state = crossHighlightNote === note ? 'highlighted' : 'default'; 
-             // Re-apply filters if not highlighted and state is still default
              if (state === 'default') {
                 if (showNaturalOnly && note.includes('#')) { state = 'hidden'; }
                 if (selectedString !== null && position.string !== selectedString) { state = 'hidden'; }
@@ -540,7 +548,6 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
          }
        } else { // Default 'explore' mode outside practice
          state = crossHighlightNote === note ? 'highlighted' : 'default';
-          // Apply filters if not highlighted
           if (state === 'default') {
              if (showNaturalOnly && note.includes('#')) { state = 'hidden'; }
              if (selectedString !== null && position.string !== selectedString) { state = 'hidden'; }
@@ -739,16 +746,20 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
               let state: NoteDisplayState = 'default'; 
               let noteTextOverride: string | null = null; 
 
-              // Apply filters first
-              if (showNaturalOnly && note.includes('#') && !(practiceMode === 'find' && note === quizNote) && !(practiceMode === 'octaves' && note === crossHighlightNote)) {
-                 state = 'hidden';
-              }
-              if (selectedString !== null && position.string !== selectedString) {
-                 state = 'hidden';
+              // Apply filters first - ONLY for non-practice or explore sub-mode?
+              // Let's apply general filters here, then override in practice cases if needed
+              // This might need refinement
+              if (practiceMode !== 'find' && practiceMode !== 'octaves' && practiceMode !== 'identify') {
+                if (showNaturalOnly && note.includes('#')) {
+                   state = 'hidden';
+                }
+                if (selectedString !== null && position.string !== selectedString) {
+                   state = 'hidden';
+                }
               }
 
               // Determine state based on displayMode and practiceMode (only if not already hidden)
-              if (state !== 'hidden') {
+              if (state !== 'hidden') { 
                  if (displayMode === 'scale') {
                    if (!scaleNotes || !scaleNotes.includes(note)) {
                      state = 'hidden';
@@ -786,38 +797,31 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
                      case 'find':
                        const isFound = foundPositions.some(p => p.string === position.string && p.fret === position.fret);
                        const isIncorrect = incorrectClickPos?.string === position.string && incorrectClickPos?.fret === position.fret;
-
                        if (isIncorrect) {
-                         state = 'quiz_incorrect_click'; // Show temporary incorrect feedback
+                         state = 'quiz_incorrect_click';
                        } else if (isFound) {
-                         state = 'target_found'; // Show green if found
+                         state = 'target_found';
                        } else {
-                         state = 'placeholder_clickable'; // NEW: Show clickable placeholder for unfound/unclicked
+                         state = 'placeholder_clickable';
                        }
-                       // Filters (like showNaturalOnly, selectedString) should NOT apply here, 
-                       // as the goal is to click placeholders, regardless of the underlying note 
-                       // or filter settings, until the note is revealed as 'target_found'.
                        break;
-                     case 'octaves':
+                     case 'octaves': 
                        const isInitial = initialOctavePosition?.string === position.string && initialOctavePosition?.fret === position.fret;
                        const isFoundOctave = foundOctaves.some(p => p.string === position.string && p.fret === position.fret);
                        const isIncorrectOctaveClick = incorrectClickPos?.string === position.string && incorrectClickPos?.fret === position.fret;
-
                        if (isInitial) {
-                         state = 'root'; // Show starting note
+                         state = 'root';
                        } else if (isIncorrectOctaveClick) {
-                         state = 'quiz_incorrect_click'; // Show temporary incorrect feedback
+                         state = 'quiz_incorrect_click';
                        } else if (isFoundOctave) {
-                         state = 'target_found'; // Show found octaves
+                         state = 'target_found';
                        } else {
-                         state = 'placeholder_clickable'; // Show placeholders everywhere else
+                         state = 'placeholder_clickable';
                        }
                        break;
-                     case 'explore':
+                     case 'explore': // Apply filters specifically in explore sub-mode
                      default:
-                       // Ensure crossHighlightNote takes precedence over filters in explore mode
                        state = crossHighlightNote === note ? 'highlighted' : 'default'; 
-                       // Re-apply filters if not highlighted and state is still default
                        if (state === 'default') {
                           if (showNaturalOnly && note.includes('#')) { state = 'hidden'; }
                           if (selectedString !== null && position.string !== selectedString) { state = 'hidden'; }
@@ -826,7 +830,6 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
                    }
                  } else { // Default 'explore' mode outside practice
                    state = crossHighlightNote === note ? 'highlighted' : 'default';
-                    // Apply filters if not highlighted
                     if (state === 'default') {
                        if (showNaturalOnly && note.includes('#')) { state = 'hidden'; }
                        if (selectedString !== null && position.string !== selectedString) { state = 'hidden'; }
