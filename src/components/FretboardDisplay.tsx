@@ -493,8 +493,17 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
          if (!cagedPosition) {
            state = 'hidden';
          } else {
-           noteTextOverride = cagedPosition.finger > 0 ? String(cagedPosition.finger) : 'O';
-           state = cagedPosition.noteType === 'Root' ? 'caged_root' : 'caged_finger';
+           // noteTextOverride = cagedPosition.finger > 0 ? String(cagedPosition.finger) : 'O'; // OLD: Show finger
+           // NEW: Show interval (R, 3, 5) or note name
+           switch (cagedPosition.noteType) {
+               case 'Root': noteTextOverride = 'R'; break;
+               case '3rd': noteTextOverride = '3'; break;
+               case '5th': noteTextOverride = '5'; break;
+               // Add other intervals if defined, or use the type directly if it's simple
+               // default: noteTextOverride = cagedPosition.noteType ? String(cagedPosition.noteType) : note; // Fallback to noteType string or actual note
+               default: noteTextOverride = note; // Fallback to actual note name if noteType is undefined or not R/3/5
+           }
+           state = cagedPosition.noteType === 'Root' ? 'caged_root' : 'caged_finger'; // Keep state for styling root differently
          }
        } else if (displayMode === 'practice') {
          switch (practiceMode) {
@@ -571,8 +580,8 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
          return <ClickablePlaceholder onClick={() => handleNoteClick(position)} />;
        case 'caged_finger':
        case 'caged_root':
-         // Use noteTextOverride for CAGED display
-         return <FretboardNote {...commonProps} note={noteTextOverride ?? '!'} state={state} />;
+         // Use noteTextOverride for CAGED display (now interval or note)
+         return <FretboardNote {...commonProps} note={noteTextOverride ?? note} state={state} />; // Fallback to note if override fails
        default:
          // Render FretboardNote for all other states
          return <FretboardNote {...commonProps} note={note} state={state} />;
@@ -778,8 +787,17 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
                    if (!cagedPosition) {
                      state = 'hidden';
                    } else {
-                     noteTextOverride = cagedPosition.finger > 0 ? String(cagedPosition.finger) : 'O';
-                     state = cagedPosition.noteType === 'Root' ? 'caged_root' : 'caged_finger';
+                     // noteTextOverride = cagedPosition.finger > 0 ? String(cagedPosition.finger) : 'O'; // OLD: Show finger
+                     // NEW: Show interval (R, 3, 5) or note name
+                     switch (cagedPosition.noteType) {
+                         case 'Root': noteTextOverride = 'R'; break;
+                         case '3rd': noteTextOverride = '3'; break;
+                         case '5th': noteTextOverride = '5'; break;
+                         // Add other intervals if defined, or use the type directly if it's simple
+                         // default: noteTextOverride = cagedPosition.noteType ? String(cagedPosition.noteType) : note; // Fallback to noteType string or actual note
+                         default: noteTextOverride = note; // Fallback to actual note name if noteType is undefined or not R/3/5
+                     }
+                     state = cagedPosition.noteType === 'Root' ? 'caged_root' : 'caged_finger'; // Keep state for styling root differently
                    }
                  } else if (displayMode === 'practice') {
                    switch (practiceMode) {
@@ -856,8 +874,8 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
                    return <ClickablePlaceholder onClick={() => handleNoteClick(position)} />;
                  case 'caged_finger':
                  case 'caged_root':
-                   // Use noteTextOverride for CAGED display
-                   return <FretboardNote {...commonProps} note={noteTextOverride ?? '!'} state={state} />;
+                   // Use noteTextOverride for CAGED display (now interval or note)
+                   return <FretboardNote {...commonProps} note={noteTextOverride ?? note} state={state} />; // Fallback to note if override fails
                  default:
                    // Render FretboardNote for all other states
                    return <FretboardNote {...commonProps} note={note} state={state} />;

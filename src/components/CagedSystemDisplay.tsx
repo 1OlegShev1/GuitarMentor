@@ -125,28 +125,56 @@ const CagedSystemDisplay: React.FC<CagedSystemDisplayProps> = () => {
     if (rootNoteMidi === -1) return null; // Invalid root note selected
 
     // Find the lowest fret for the selected root note on the shape's anchor string
-    let rootFret = -1;
+    let initialRootFret = -1;
     const openStringMidi = ALL_NOTES.indexOf(STANDARD_TUNING[rootStringIndex]);
     if (openStringMidi === -1) return null; // Invalid tuning/string index
 
-    for (let fret = 0; fret < 15; fret++) { // Search up to fret 15
+    for (let fret = 0; fret < 15; fret++) { // Search up to fret 15 for the first occurrence
       if ((openStringMidi + fret) % 12 === rootNoteMidi) {
-        rootFret = fret;
+        initialRootFret = fret;
         break;
       }
     }
 
-    if (rootFret === -1) {
-      console.warn(`Cannot form ${rootNote} chord using ${shapeKey} shape: Root not found on string ${rootStringIndex}`);
+    if (initialRootFret === -1) {
+      console.warn(`Cannot form ${rootNote} chord using ${shapeKey} shape: Root not found on string ${rootStringIndex + 1}`);
       return null; // Root note not found on anchor string in reasonable range
     }
 
-    // Transpose positions
+    // Calculate minimum relative fret from the shape definition
+    const minRelativeFret = Math.min(...relativePositions.map(p => p.relativeFret));
+    
+    // Check if the shape fits at the initial root fret position
+    let rootFret = initialRootFret;
+    if (rootFret + minRelativeFret < 0) {
+        console.log(`Initial root fret ${rootFret} for ${rootNote} (${shapeKey} shape) is too low. Searching higher...`);
+        // Initial position is too low, search for the next occurrence (usually +12)
+        let nextRootFret = -1;
+        for (let fret = rootFret + 1; fret < 24; fret++) { // Search higher up
+             if ((openStringMidi + fret) % 12 === rootNoteMidi) {
+                 nextRootFret = fret;
+                 break;
+             }
+        }
+        
+        if (nextRootFret !== -1 && (nextRootFret + minRelativeFret >= 0)) {
+            console.log(`Found next suitable root fret at ${nextRootFret}`);
+            rootFret = nextRootFret; // Use the higher fret position
+        } else {
+             console.warn(`Cannot form ${rootNote} chord using ${shapeKey} shape: Shape extends below fret 0 even at higher positions or next root not found.`);
+             return null; // Shape cannot be formed even at the next octave
+        }
+    }
+
+    // Transpose positions using the determined (potentially adjusted) rootFret
     const absolutePositions = relativePositions.map(pos => ({
       ...pos,
       fret: rootFret + pos.relativeFret,
-      string: 6 - pos.string // Convert 1-based definition to 0-based display
+      string: 5 - (pos.string -1) // Corrected conversion from 1-based definition to 0-based display
     })).filter(pos => pos.fret >= 0 && pos.fret <= 24); // Filter out negative/too high frets
+    
+    // Optional: Add another check here if filtering removed too many notes?
+    // For now, the check above `rootFret + minRelativeFret < 0` handles the primary issue.
 
     // Transpose barres (handle potential non-existence)
     const absoluteBarres = (relativeBarres || []).map(barre => ({
@@ -198,12 +226,23 @@ const CagedSystemDisplay: React.FC<CagedSystemDisplayProps> = () => {
         </div>
       </div>
 
-      {/* Fretboard Display */}
-      <div className="w-full max-w-4xl mx-auto"> {/* Center and constrain width */}
-        <FretboardDisplay
-          displayMode="caged"
-          cagedShape={currentCagedShape ?? undefined}
-        />
+      {/* Fretboard Display or Message */}
+      <div className="w-full max-w-4xl mx-auto"> 
+        {currentCagedShape ? (
+           <FretboardDisplay
+             displayMode="caged"
+             cagedShape={currentCagedShape}
+           />
+         ) : (
+            <div className="text-center p-8 bg-gray-100 dark:bg-secondary-800 rounded-lg shadow">
+              <p className="text-lg text-gray-700 dark:text-gray-300">
+                The selected <span className="font-semibold">{selectedShapeKey} shape</span> cannot be formed with the root note <span className="font-semibold">{selectedRootNote}</span> at this low position on the fretboard.
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                (CAGED shapes are typically moved up the neck from their open position.)
+              </p>
+            </div>
+         )}
       </div>
     </div>
   );
