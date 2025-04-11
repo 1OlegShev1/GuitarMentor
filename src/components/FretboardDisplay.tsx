@@ -47,7 +47,7 @@ const NonClickablePlaceholder: React.FC = () => (
 type FretboardMode = 'explore' | 'identify' | 'find' | 'octaves';
 
 // Add a new type for display purposes, distinct from practice modes
-export type FretboardDisplayMode = 'explore' | 'practice' | 'scale' | 'caged';
+export type FretboardDisplayMode = 'explore' | 'practice' | 'scale' | 'caged' | 'chord';
 
 // Define types for CAGED display
 export interface CagedNotePosition extends NotePosition {
@@ -67,6 +67,19 @@ export interface CagedShapeData {
   mutedStrings?: number[]; // 1-indexed string numbers to mute
 }
 
+// Define types for Chord Voicing display (Export this too)
+// Ensure this structure matches what getChordVoicing provides
+export interface ChordVoicingPosition extends NotePosition {
+  finger?: number; // Optional finger
+  noteType?: 'Root' | '3rd' | '5th' | '7th' | string; // Optional interval/note name
+}
+
+export interface ChordVoicingData {
+  positions: ChordVoicingPosition[]; 
+  barres?: Barre[];
+  mutedStrings?: number[]; // 1-based string numbers to mute
+}
+
 interface FretboardDisplayProps {
   // showPractice?: boolean; // Replace with displayMode
   displayMode?: FretboardDisplayMode; // Default to 'explore' or 'practice' based on context? Let's start with default 'explore'
@@ -77,6 +90,8 @@ interface FretboardDisplayProps {
 
   // Props for CagedSystemDisplay (to be added later)
   cagedShape?: CagedShapeData;
+  chordVoicing?: ChordVoicingData; // Add prop for chord voicing data
+  chordRootNote?: string | null; // ADDED: Root note for the displayed chord
 }
 
 const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
@@ -85,6 +100,8 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
   rootNote = null,
   highlightedPattern = [],
   cagedShape = null, // Add cagedShape prop
+  chordVoicing = null, // Add chordVoicing prop
+  chordRootNote = null, // Destructure the new prop
 }) => {
   const [showNaturalOnly, setShowNaturalOnly] = useState(false);
   const [crossHighlightNote, setCrossHighlightNote] = useState<string | null>(null);
@@ -505,6 +522,33 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
            }
            state = cagedPosition.noteType === 'Root' ? 'caged_root' : 'caged_finger'; // Keep state for styling root differently
          }
+       } else if (displayMode === 'chord' && chordVoicing) {
+           const voicingPosition = chordVoicing.positions.find(p => 
+               p.string === position.string && p.fret === position.fret
+           );
+           
+           if (voicingPosition) {
+               // This position is explicitly fretted
+               // Use chordRootNote prop for styling root
+               state = (voicingPosition.noteType === 'Root' || note === chordRootNote) ? 'root' : 'pattern_member';
+               // Simplified logic above - assumes voicingPosition.noteType might not always be set, fallbacks to checking calculated note against chordRootNote
+           } else {
+               // Not fretted, check if it's an open string that should sound
+               const isMuted = chordVoicing.mutedStrings?.includes(position.string + 1);
+               // ADD CHECK: See if any fretted note exists for this specific string in the voicing data
+               const hasFrettedNoteOnString = chordVoicing.positions.some(p => p.string === position.string);
+
+               if (position.fret === 0 && !isMuted && !hasFrettedNoteOnString) {
+                   // It IS an unmuted open string AND no fretted note overrides it
+                   state = note === chordRootNote ? 'root' : 'pattern_member';
+               } else {
+                   // It's either:
+                   // - a fretted note not in the voicing (implicit check: position.fret !== 0)
+                   // - a muted open/fretted string (isMuted is true)
+                   // - an open string overridden by a fretted note (hasFrettedNoteOnString is true)
+                   state = 'hidden'; 
+               }
+           }
        } else if (displayMode === 'practice') {
          switch (practiceMode) {
            case 'identify':
@@ -799,6 +843,33 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
                      }
                      state = cagedPosition.noteType === 'Root' ? 'caged_root' : 'caged_finger'; // Keep state for styling root differently
                    }
+                 } else if (displayMode === 'chord' && chordVoicing) {
+                     const voicingPosition = chordVoicing.positions.find(p => 
+                         p.string === position.string && p.fret === position.fret
+                     );
+                     
+                     if (voicingPosition) {
+                        // This position is explicitly fretted
+                        // Use chordRootNote prop for styling root
+                        state = (voicingPosition.noteType === 'Root' || note === chordRootNote) ? 'root' : 'pattern_member';
+                        // Simplified logic above - assumes voicingPosition.noteType might not always be set, fallbacks to checking calculated note against chordRootNote
+                     } else {
+                         // Not fretted, check if it's an open string that should sound
+                         const isMuted = chordVoicing.mutedStrings?.includes(position.string + 1);
+                         // ADD CHECK: See if any fretted note exists for this specific string in the voicing data
+                         const hasFrettedNoteOnString = chordVoicing.positions.some(p => p.string === position.string);
+
+                         if (position.fret === 0 && !isMuted && !hasFrettedNoteOnString) {
+                             // It IS an unmuted open string AND no fretted note overrides it
+                             state = note === chordRootNote ? 'root' : 'pattern_member';
+                         } else {
+                             // It's either:
+                             // - a fretted note not in the voicing (implicit check: position.fret !== 0)
+                             // - a muted open/fretted string (isMuted is true)
+                             // - an open string overridden by a fretted note (hasFrettedNoteOnString is true)
+                             state = 'hidden'; 
+                         }
+                     }
                  } else if (displayMode === 'practice') {
                    switch (practiceMode) {
                      case 'identify':

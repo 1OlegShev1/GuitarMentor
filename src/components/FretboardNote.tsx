@@ -19,7 +19,8 @@ export type NoteDisplayState =
   | 'quiz_incorrect_click' // NEW: Find mode temporary incorrect click feedback
   | 'pattern_highlight' // NEW: Scale explorer specific position highlight
   | 'caged_finger'      // CAGED finger number display
-  | 'caged_root';       // CAGED root note display (might overlap with 'root')
+  | 'caged_root'        // CAGED root note display (might overlap with 'root')
+  // | 'open_string';      // REMOVED
 
 // Update Props to use the state enum
 export interface FretboardNoteProps {
@@ -118,8 +119,9 @@ export const FretboardNote: React.FC<FretboardNoteProps> = ({
       break;
     case 'caged_finger': // Use note prop directly (parent sends finger number)
       displayContent = note;
-      backgroundClasses = 'bg-blue-500 dark:bg-blue-700';
+      backgroundClasses = 'bg-blue-500 dark:bg-blue-600';
       textClasses = 'text-white';
+      borderClasses = 'border-blue-700 dark:border-blue-500';
       break;
     case 'default':
     default:
