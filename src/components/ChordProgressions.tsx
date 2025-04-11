@@ -335,84 +335,99 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
   }, [selectedKey, currentProgressionDetails, customProgression, isCustom]);
 
   // --- Function to Start/Restart Sequence ---
-  const startOrRestartSequence = () => {
-      if (!synth.current) return;
-      const chords = progressionChordsRef.current;
+  const startOrRestartSequence = (chordsToPlay?: string[]) => {
+      if (!synth.current) {
+          console.error("Synth not initialized!");
+          return;
+      }
+      // Use provided chords or fallback to ref (for direct play button)
+      const chords = chordsToPlay ?? progressionChordsRef.current;
+      
       if (!chords || chords.length === 0) {
-          stopPlayback(); // Stop if no chords (calls setIsPlaying(false))
+          stopPlayback();
           return;
       }
 
-      // Dispose old sequence FIRST
-      sequence.current?.dispose();
-
-      // Stop current transport & clear events before restart
+      // --- 1. Stop Transport & Clean Up --- 
       Tone.Transport.stop();
-      Tone.Transport.cancel();
-      synth.current.releaseAll(); 
-      setCurrentChordIndex(-1); 
+      Tone.Transport.cancel(); // Clear ALL scheduled events
+      synth.current.releaseAll(); // Silence immediately
+      setCurrentChordIndex(-1); // Reset visual index
 
-      // Explicitly reset transport position before creating new sequence
-      Tone.Transport.position = 0;
+      // --- 2. Dispose OLD Sequence --- 
+      sequence.current?.dispose();
+      sequence.current = null; // Explicitly nullify
 
-      // Configure Transport BPM
-      Tone.Transport.bpm.value = bpm;
+      // --- 3. Configure Transport for NEW Sequence ---
+      Tone.Transport.position = 0; // Reset position
+      Tone.Transport.bpm.value = bpm; // Set BPM
+      Tone.Transport.loop = true; // Enable loop
+      Tone.Transport.loopEnd = `${chords.length}m`; // Set correct loop end based on NEW chords
 
-      // Create the new sequence
+      // --- 4. Create and Schedule NEW Sequence ---
       sequence.current = new Tone.Sequence((time, index) => {
           const chordName = chords[index];
           const notesToPlay = getChordNotes(chordName);
-          synth.current?.triggerAttackRelease(notesToPlay, "1n", time); // Play for 1 measure
+          // Ensure synth is still valid inside callback? (Should be okay)
+          synth.current?.triggerAttackRelease(notesToPlay, "1n", time); 
           
           Tone.Draw.schedule(() => {
               setCurrentChordIndex(index);
-          }, time); // Schedule UI update
+          }, time); 
 
-      }, Array.from({ length: chords.length }, (_, i) => i), "1m").start(0);
+      }, Array.from({ length: chords.length }, (_, i) => i), "1m").start(0); // Start sequence at transport time 0
       
-      // Configure loop
-      Tone.Transport.loop = true;
-      Tone.Transport.loopEnd = `${chords.length}m`;
-
-      // Ensure stop handler is attached
+      // --- 5. Set Up Stop Handler for NEW Transport State ---
       Tone.Transport.off('stop'); 
       Tone.Transport.on('stop', () => {
-         // ONLY cleanup and visual reset. DO NOT set isPlaying state here.
          synth.current?.releaseAll(); 
          setCurrentChordIndex(-1);
       });
 
-      // Set playing state BEFORE starting transport
-      setIsPlaying(true); 
-      // Add extra releaseAll right before starting transport
-      synth.current?.releaseAll(); 
+      // --- 6. Start Transport ---
+      // Start slightly in the future to allow setup to complete
       Tone.Transport.start("+0.1");
+
+      // --- 7. Update React State --- 
+      setIsPlaying(true); 
+      // No releaseAll here as it was done during cleanup
   };
 
   // --- Play/Stop Button Handler ---
   const togglePlayback = async () => {
-    // Check if audio context needs starting
-    if (Tone.context.state === 'suspended') {
-      try {
-        await Tone.start();
-        console.log("Audio Context started.");
-        // If context just started, delay sequence start slightly
-        if (isPlaying) {
-          stopPlayback(); 
+    if (isPlaying) {
+        // Handle Stop action first (simplest case)
+        stopPlayback();
+        return;
+    }
+
+    // Handle Play action
+    try {
+        if (Tone.context.state === 'suspended') {
+            await Tone.start();
+            console.log("Audio Context started by user gesture.");
+            // Context just started. Schedule the sequence start slightly AFTER transport starts.
+            if (!synth.current) { // Double check synth after await
+                console.error("Synth not ready after Tone.start()");
+                return;
+            } 
+            Tone.Transport.scheduleOnce((time) => {
+                console.log("Scheduled sequence start executing at time:", time);
+                startOrRestartSequence();
+            }, "+0.1"); // Schedule slightly after transport start
+
+            // Start the transport now, the sequence will begin shortly after via scheduleOnce
+            Tone.Transport.start("+0.05"); 
+            setIsPlaying(true); // Set state to playing, sequence starts soon
+
         } else {
-           setTimeout(() => startOrRestartSequence(), 10); // 10ms delay
+            // Audio context already running, start sequence immediately
+            startOrRestartSequence();
         }
-      } catch (e) {
-        console.error("Error starting Audio Context:", e);
-        return; // Don't proceed if audio context failed to start
-      }
-    } else {
-       // Audio context already running, proceed immediately
-       if (isPlaying) {
-         stopPlayback();
-       } else {
-         startOrRestartSequence();
-       }
+    } catch (e) {
+        console.error("Error during playback toggle:", e);
+        // Ensure state is correct if something fails
+        if (isPlaying) stopPlayback(); 
     }
   };
 
@@ -427,52 +442,82 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
   // --- Event Handlers (Call startOrRestartSequence directly if playing) ---
 
   const handleKeyChange = (newKey: string) => {
-    // Explicitly STOP playback when key changes, instead of restarting
+    // Key change always stops playback, no restart needed
     if (isPlayingRef.current) {
       stopPlayback(); 
     }
     setSelectedKey(newKey);
-    // if (isPlayingRef.current) { 
-    //   startOrRestartSequence(); // OLD: Restarted playback
-    // }
   };
 
   const handleProgressionChange = (id: string) => {
+    // Calculate NEW chords based on the selected ID
+    const newProgressionDetails = PROGRESSIONS.find(prog => prog.id === id);
+    const newNumerals = newProgressionDetails?.numerals ?? [];
+    const newChords = newNumerals.map(numeral => {
+       const index = NUMERAL_TO_INDEX[numeral];
+       return (index !== undefined && KEY_CHORDS[selectedKey]) ? KEY_CHORDS[selectedKey][index] : '?';
+    }).filter(chord => chord !== '?');
+    
+    // Set state AFTER calculating chords
     setSelectedProgression(id);
     setIsCustom(false);
+
+    // If playing, restart with the NEW chords
     if (isPlayingRef.current) {
-      startOrRestartSequence(); // Direct call, no timeout
+      startOrRestartSequence(newChords); // Pass NEW chords directly
     }
   };
 
   const startCustomProgression = () => {
+    const defaultCustomChords = ['I', 'IV', 'V'].map(numeral => { // Use default
+       const index = NUMERAL_TO_INDEX[numeral];
+       return (index !== undefined && KEY_CHORDS[selectedKey]) ? KEY_CHORDS[selectedKey][index] : '?';
+    }).filter(chord => chord !== '?');
+    
     setCustomProgression(['I', 'IV', 'V']);
     setIsCustom(true);
     if (isPlayingRef.current) {
-       startOrRestartSequence(); // Direct call, no timeout
+       startOrRestartSequence(defaultCustomChords);
     }
   };
 
   const updateCustomProgression = (index: number, numeral: string) => {
-    const newProgression = [...customProgression];
-    newProgression[index] = numeral;
-    setCustomProgression(newProgression);
+    const updatedProgressionNumerals = [...customProgression];
+    updatedProgressionNumerals[index] = numeral;
+    const newChords = updatedProgressionNumerals.map(num => { // Calculate new chords
+       const idx = NUMERAL_TO_INDEX[num];
+       return (idx !== undefined && KEY_CHORDS[selectedKey]) ? KEY_CHORDS[selectedKey][idx] : '?';
+    }).filter(chord => chord !== '?');
+
+    setCustomProgression(updatedProgressionNumerals);
     if (isPlayingRef.current) {
-      startOrRestartSequence(); // Direct call, no timeout
+      startOrRestartSequence(newChords);
     }
   };
 
   const addChord = () => {
-    setCustomProgression([...customProgression, 'I']);
+    const updatedProgressionNumerals = [...customProgression, 'I'];
+    const newChords = updatedProgressionNumerals.map(num => { // Calculate new chords
+       const idx = NUMERAL_TO_INDEX[num];
+       return (idx !== undefined && KEY_CHORDS[selectedKey]) ? KEY_CHORDS[selectedKey][idx] : '?';
+    }).filter(chord => chord !== '?');
+
+    setCustomProgression(updatedProgressionNumerals);
     if (isPlayingRef.current) {
-       startOrRestartSequence(); // Direct call, no timeout
+       startOrRestartSequence(newChords);
     }
   };
 
   const removeChord = (index: number) => {
-    setCustomProgression(customProgression.filter((_, i) => i !== index));
+    const updatedProgressionNumerals = customProgression.filter((_, i) => i !== index);
+    const newChords = updatedProgressionNumerals.map(num => { // Calculate new chords
+       const idx = NUMERAL_TO_INDEX[num];
+       return (idx !== undefined && KEY_CHORDS[selectedKey]) ? KEY_CHORDS[selectedKey][idx] : '?';
+    }).filter(chord => chord !== '?');
+
+    setCustomProgression(updatedProgressionNumerals);
     if (isPlayingRef.current) {
-       startOrRestartSequence(); // Direct call, no timeout
+       startOrRestartSequence(newChords);
     }
   };
 
