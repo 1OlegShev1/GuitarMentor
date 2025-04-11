@@ -258,6 +258,38 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
   const [chordVoicing, setChordVoicing] = useState<ChordVoicingData | null>(null);
   const [displayedChordRootNote, setDisplayedChordRootNote] = useState<string | null>(null);
 
+  // --- Function to update displayed chord diagram ---
+  const showChordDiagram = (chordIdentifier: string) => {
+    // chordIdentifier is like "A minor", "C Major", "B Diminished"
+    let baseChordName = '';
+    if (chordIdentifier.endsWith(' minor')) {
+        baseChordName = chordIdentifier.split(' ')[0] + 'm'; // "A minor" -> "Am"
+    } else if (chordIdentifier.endsWith(' Diminished')) {
+        baseChordName = chordIdentifier.split(' ')[0] + 'dim'; // "B Diminished" -> "Bdim"
+    } else if (chordIdentifier.endsWith(' Major')) {
+        baseChordName = chordIdentifier.split(' ')[0]; // "C Major" -> "C"
+    } else {
+         baseChordName = chordIdentifier; // Fallback for simple names or potential errors
+         console.warn("Could not reliably parse base chord name from:", chordIdentifier);
+    }
+
+    // const chordNameOnly = chordIdentifier.split(' ')[0]; // OLD INCORRECT LOGIC
+    const rootNoteOnly = baseChordName.replace(/m$|dim$/, ''); // Use baseChordName for root extraction
+    const voicing = getChordVoicing(baseChordName); // Use the reconstructed base name for lookup
+
+    if (voicing) {
+      setDisplayedChordName(chordIdentifier); 
+      setChordVoicing(voicing);
+      setDisplayedChordRootNote(rootNoteOnly); 
+    } else {
+      // Clear display if no voicing found for the requested chord
+      setDisplayedChordName(null);
+      setChordVoicing(null);
+      setDisplayedChordRootNote(null); 
+      console.warn(`No voicing found for ${baseChordName}`);
+    }
+  };
+
   // --- Stop Playback Function (for manual stop ONLY) ---
   const stopPlayback = () => {
     Tone.Transport.stop();
@@ -265,6 +297,7 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
     synth.current?.releaseAll();
     setIsPlaying(false);
     setCurrentChordIndex(-1);
+    clearChordDisplay(); // Clear diagram when stopping
   };
 
   // --- Initialize Tone.js Synth (runs once) ---
@@ -445,23 +478,11 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
 
   // --- Chord Click Handler ---
   const handleChordClick = (chordIdentifier: string) => {
-    const chordNameOnly = chordIdentifier.split(' ')[0];
-    const rootNoteOnly = chordNameOnly.replace(/m$|dim$/, '');
-    const voicing = getChordVoicing(chordNameOnly);
-    
-    if (chordVoicing && displayedChordName === chordIdentifier) {
-        setDisplayedChordName(null);
-        setChordVoicing(null);
-        setDisplayedChordRootNote(null);
-    } else if (voicing) {
-      setDisplayedChordName(chordIdentifier); 
-      setChordVoicing(voicing);
-      setDisplayedChordRootNote(rootNoteOnly);
+    // If clicking the already displayed chord, clear it, otherwise show it.
+    if (displayedChordName === chordIdentifier) {
+        clearChordDisplay();
     } else {
-      setDisplayedChordName(null);
-      setChordVoicing(null);
-      setDisplayedChordRootNote(null);
-      console.warn(`No voicing found for ${chordNameOnly}`);
+        showChordDiagram(chordIdentifier); // Use the extracted function
     }
   };
 
@@ -471,6 +492,21 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
       setChordVoicing(null);
       setDisplayedChordRootNote(null);
   };
+
+  // --- Auto-update Chord Diagram during Playback ---
+  useEffect(() => {
+    // Only run if playing and index is valid
+    if (isPlayingRef.current && currentChordIndex >= 0) {
+      const chords = progressionChordsRef.current;
+      if (chords && chords.length > currentChordIndex) {
+         const currentChordName = chords[currentChordIndex];
+         const currentChordDisplayName = getChordDisplayName(currentChordName);
+         // Update the displayed diagram to match the playing chord
+         showChordDiagram(currentChordDisplayName);
+      }
+    }
+    // We don't need to clear here when index becomes -1, stopPlayback handles it.
+  }, [currentChordIndex]); // Run when the playing chord index changes
 
   return (
     <div className="w-full">
