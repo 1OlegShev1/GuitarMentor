@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import * as Tone from 'tone';
 
 // Define key-value pairs for available keys
 const KEYS = [
@@ -85,6 +86,23 @@ const NUMERAL_TO_INDEX: Record<string, number> = {
   'vii°': 6,
 };
 
+// Helper to get basic triad notes (adjust octave/complexity later)
+const getChordNotes = (chordName: string): string[] => {
+  // Very basic implementation - needs refinement for quality, root, octave
+  // Example: C Major -> C4, E4, G4
+  // Example: Am -> A4, C5, E5 
+  // This needs proper music theory logic later!
+  const root = chordName.replace(/m$|dim$/, ''); // Basic root extraction
+  const isMinor = chordName.endsWith('m');
+  // Placeholder notes - replace with actual calculation
+  if (root === 'C' && !isMinor) return ['C4', 'E4', 'G4'];
+  if (root === 'F' && !isMinor) return ['F4', 'A4', 'C5'];
+  if (root === 'G' && !isMinor) return ['G4', 'B4', 'D5'];
+  if (root === 'A' && isMinor) return ['A4', 'C5', 'E5'];
+  // Add more basic cases or implement a proper theory function
+  return [`${root}4`]; // Fallback to just root note
+};
+
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface ChordProgressionsProps {
   // Add props as needed
@@ -93,59 +111,184 @@ interface ChordProgressionsProps {
 const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
   const [selectedKey, setSelectedKey] = useState<string>('C');
   const [selectedProgression, setSelectedProgression] = useState<string>('1-4-5-1');
-  const [customProgression, setCustomProgression] = useState<string[]>([]);
+  const [customProgression, setCustomProgression] = useState<string[]>(['I', 'IV', 'V', 'I']);
   const [isCustom, setIsCustom] = useState<boolean>(false);
 
-  // Get the current progression details
-  const currentProgression = PROGRESSIONS.find(prog => prog.id === selectedProgression);
+  // --- Audio State ---
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [bpm, setBpm] = useState<number>(140);
+  const [currentChordIndex, setCurrentChordIndex] = useState<number>(-1);
+  const synth = useRef<Tone.PolySynth | null>(null);
+  const sequence = useRef<Tone.Sequence | null>(null);
+  const progressionChordsRef = useRef<string[]>([]);
+  const isPlayingRef = useRef(isPlaying);
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+  const isInitialMount = useRef(true);
 
-  // Get chords for the selected progression in the selected key
-  const getChordsForProgression = (): string[] => {
-    if (isCustom) {
-      return customProgression.map(numeral => {
-        const index = NUMERAL_TO_INDEX[numeral];
-        return index !== undefined ? KEY_CHORDS[selectedKey][index] : '';
-      });
-    }
-    
-    if (!currentProgression) return [];
-    
-    return currentProgression.numerals.map(numeral => {
-      const index = NUMERAL_TO_INDEX[numeral];
-      return index !== undefined ? KEY_CHORDS[selectedKey][index] : '';
-    });
+  // --- Stop Playback Function (for manual stop ONLY) ---
+  const stopPlayback = () => {
+    Tone.Transport.stop();
+    Tone.Transport.cancel();
+    synth.current?.releaseAll();
+    setIsPlaying(false);
+    setCurrentChordIndex(-1);
   };
 
-  // Handle progression change
+  // --- Initialize Tone.js Synth (runs once) ---
+  useEffect(() => {
+    synth.current = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: "triangle" },
+      envelope: { attack: 0.02, decay: 0.1, sustain: 0.3, release: 0.5 }
+    }).toDestination();
+    isInitialMount.current = false; // Mark initial mount as complete
+
+    return () => {
+      // Cleanup on unmount
+      Tone.Transport.stop();
+      Tone.Transport.cancel();
+      sequence.current?.dispose();
+      synth.current?.dispose();
+    };
+  }, []);
+
+  // Get the current progression details
+  const currentProgressionDetails = useMemo(() => 
+     PROGRESSIONS.find(prog => prog.id === selectedProgression)
+  , [selectedProgression]);
+
+  // Get chords for the selected progression in the selected key
+  const progressionChords = useMemo((): string[] => {
+    const numerals = isCustom ? customProgression : currentProgressionDetails?.numerals ?? [];
+    const chords = numerals.map(numeral => {
+      const index = NUMERAL_TO_INDEX[numeral];
+      return (index !== undefined && KEY_CHORDS[selectedKey]) ? KEY_CHORDS[selectedKey][index] : '?';
+    }).filter(chord => chord !== '?');
+    
+    progressionChordsRef.current = chords;
+    return chords;
+  }, [selectedKey, currentProgressionDetails, customProgression, isCustom]);
+
+  // --- Function to Start/Restart Sequence ---
+  const startOrRestartSequence = () => {
+      if (!synth.current) return;
+      const chords = progressionChordsRef.current;
+      if (!chords || chords.length === 0) {
+          stopPlayback(); // Stop if no chords (calls setIsPlaying(false))
+          return;
+      }
+
+      // Stop current transport & clear events before restart
+      Tone.Transport.stop();
+      Tone.Transport.cancel();
+      synth.current.releaseAll(); 
+      setCurrentChordIndex(-1); 
+
+      // Dispose old sequence before creating new one
+      sequence.current?.dispose();
+
+      // Configure Transport BPM
+      Tone.Transport.bpm.value = bpm;
+
+      // Create the new sequence
+      sequence.current = new Tone.Sequence((time, index) => {
+          const chordName = chords[index];
+          const notesToPlay = getChordNotes(chordName);
+          synth.current?.triggerAttackRelease(notesToPlay, "1n", time); // Play for 1 measure
+          
+          Tone.Draw.schedule(() => {
+              setCurrentChordIndex(index);
+          }, time); // Schedule UI update
+
+      }, Array.from({ length: chords.length }, (_, i) => i), "1m").start(0);
+      
+      // Configure loop
+      Tone.Transport.loop = true;
+      Tone.Transport.loopEnd = `${chords.length}m`;
+
+      // Ensure stop handler is attached
+      Tone.Transport.off('stop'); 
+      Tone.Transport.on('stop', () => {
+         // ONLY cleanup and visual reset. DO NOT set isPlaying state here.
+         synth.current?.releaseAll(); 
+         setCurrentChordIndex(-1);
+      });
+
+      // Set playing state BEFORE starting transport
+      setIsPlaying(true); // Directly set state here
+      Tone.Transport.start("+0.1");
+  };
+
+  // --- Play/Stop Button Handler ---
+  const togglePlayback = async () => {
+    await Tone.start();
+    if (isPlaying) {
+      stopPlayback();
+    } else {
+      startOrRestartSequence();
+    }
+  };
+
+  const handleBpmChange = (newBpm: number) => {
+    const clampedBpm = Math.max(40, Math.min(240, newBpm));
+    setBpm(clampedBpm);
+    if (Tone.Transport.state === 'started') {
+        Tone.Transport.bpm.value = clampedBpm;
+    }
+  };
+
+  // --- Event Handlers (Call startOrRestartSequence directly if playing) ---
+
+  const handleKeyChange = (newKey: string) => {
+    // Explicitly STOP playback when key changes, instead of restarting
+    if (isPlayingRef.current) {
+      stopPlayback(); 
+    }
+    setSelectedKey(newKey);
+    // if (isPlayingRef.current) { 
+    //   startOrRestartSequence(); // OLD: Restarted playback
+    // }
+  };
+
   const handleProgressionChange = (id: string) => {
     setSelectedProgression(id);
     setIsCustom(false);
+    if (isPlayingRef.current) {
+      startOrRestartSequence(); // Direct call, no timeout
+    }
   };
 
-  // Create a custom progression
   const startCustomProgression = () => {
-    setCustomProgression(['I', 'IV', 'V']); // Default starting point
+    setCustomProgression(['I', 'IV', 'V']);
     setIsCustom(true);
+    if (isPlayingRef.current) {
+       startOrRestartSequence(); // Direct call, no timeout
+    }
   };
 
-  // Update a numeral in the custom progression
   const updateCustomProgression = (index: number, numeral: string) => {
     const newProgression = [...customProgression];
     newProgression[index] = numeral;
     setCustomProgression(newProgression);
+    if (isPlayingRef.current) {
+      startOrRestartSequence(); // Direct call, no timeout
+    }
   };
 
-  // Add a chord to the custom progression
   const addChord = () => {
     setCustomProgression([...customProgression, 'I']);
+    if (isPlayingRef.current) {
+       startOrRestartSequence(); // Direct call, no timeout
+    }
   };
 
-  // Remove a chord from the custom progression
   const removeChord = (index: number) => {
     setCustomProgression(customProgression.filter((_, i) => i !== index));
+    if (isPlayingRef.current) {
+       startOrRestartSequence(); // Direct call, no timeout
+    }
   };
-
-  const progressionChords = getChordsForProgression();
 
   return (
     <div className="w-full">
@@ -155,7 +298,7 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
           <div className="relative inline-block">
             <select 
               value={selectedKey}
-              onChange={(e) => setSelectedKey(e.target.value)}
+              onChange={(e) => handleKeyChange(e.target.value)} // Updated onChange
               className="block w-full bg-white dark:bg-secondary-800 border border-secondary-300 dark:border-secondary-600 rounded-md px-3 pr-8 py-1 focus:outline-none"
               style={{ 
                 WebkitAppearance: "none", 
@@ -215,55 +358,51 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
       
       <div className="bg-white dark:bg-secondary-900 p-4 rounded-lg shadow-inner mb-6">
         <h2 className="font-semibold mb-4">
-          {isCustom ? 'Custom Progression' : currentProgression?.name}
+          {isCustom ? 'Custom Progression' : currentProgressionDetails?.name}
           <span className="text-sm font-normal text-secondary-500 dark:text-secondary-400 ml-2">
             in {selectedKey} Major
           </span>
         </h2>
         
+        <div className="flex items-center gap-4 mt-6 mb-4 p-3 bg-secondary-100 dark:bg-secondary-700 rounded">
+          <button
+            onClick={togglePlayback}
+            className={`px-4 py-2 rounded font-medium ${
+              isPlaying ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
+            } text-white`}
+          >
+            {isPlaying ? 'Stop' : 'Play'}
+          </button>
+          <div className="flex items-center gap-2">
+            <label htmlFor="bpmSlider" className="text-sm font-medium">BPM:</label>
+            <input 
+              type="range" 
+              id="bpmSlider"
+              min="40" 
+              max="240" 
+              value={bpm} 
+              onChange={(e) => handleBpmChange(Number(e.target.value))} 
+              className="w-32 cursor-pointer"
+            />
+            <span className="text-sm font-semibold w-10 text-right">{bpm}</span>
+          </div>
+        </div>
+
         <div className="flex flex-wrap gap-4 items-center mb-4">
-          {isCustom ? (
-            <>
-              {customProgression.map((numeral, index) => (
-                <div key={index} className="relative">
-                  <select
-                    value={numeral}
-                    onChange={(e) => updateCustomProgression(index, e.target.value)}
-                    className="bg-secondary-50 dark:bg-secondary-800 border border-secondary-200 dark:border-secondary-700 rounded-md px-3 py-2 pr-8"
-                  >
-                    <option value="I">I</option>
-                    <option value="ii">ii</option>
-                    <option value="iii">iii</option>
-                    <option value="IV">IV</option>
-                    <option value="V">V</option>
-                    <option value="vi">vi</option>
-                    <option value="vii°">vii°</option>
-                  </select>
-                  <button 
-                    onClick={() => removeChord(index)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={addChord}
-                className="px-3 py-2 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-md border border-dashed border-primary-300 dark:border-primary-700"
-              >
-                + Add Chord
-              </button>
-            </>
-          ) : (
-            currentProgression?.numerals.map((numeral, index) => (
-              <div
-                key={index}
-                className="px-4 py-2 bg-secondary-50 dark:bg-secondary-800 rounded-md border border-secondary-200 dark:border-secondary-700"
-              >
+          {(isCustom ? customProgression : currentProgressionDetails?.numerals ?? []).map((numeral, index) => (
+            <div key={index} className="flex flex-col items-center gap-1">
+              <div className="px-3 py-1 text-sm rounded border border-secondary-300 dark:border-secondary-600 bg-secondary-50 dark:bg-secondary-700">
                 {numeral}
               </div>
-            ))
-          )}
+              <button 
+                 className={`px-4 py-2 rounded text-white font-medium transition-colors duration-150 ${
+                    currentChordIndex === index ? 'bg-accent-500 scale-105' : 'bg-primary-500 hover:bg-primary-600'
+                 }`}
+              >
+                {progressionChords[index] ?? ''}
+              </button>
+            </div>
+          ))}
         </div>
         
         <div className="flex flex-wrap gap-4 mt-8">
