@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import * as Tone from 'tone';
+import { ALL_NOTES } from '@/hooks/useFretboard';
 
 // Define key-value pairs for available keys
 const KEYS = [
@@ -86,21 +87,79 @@ const NUMERAL_TO_INDEX: Record<string, number> = {
   'vii°': 6,
 };
 
-// Helper to get basic triad notes (adjust octave/complexity later)
-const getChordNotes = (chordName: string): string[] => {
-  // Very basic implementation - needs refinement for quality, root, octave
-  // Example: C Major -> C4, E4, G4
-  // Example: Am -> A4, C5, E5 
-  // This needs proper music theory logic later!
-  const root = chordName.replace(/m$|dim$/, ''); // Basic root extraction
-  const isMinor = chordName.endsWith('m');
-  // Placeholder notes - replace with actual calculation
-  if (root === 'C' && !isMinor) return ['C4', 'E4', 'G4'];
-  if (root === 'F' && !isMinor) return ['F4', 'A4', 'C5'];
-  if (root === 'G' && !isMinor) return ['G4', 'B4', 'D5'];
-  if (root === 'A' && isMinor) return ['A4', 'C5', 'E5'];
-  // Add more basic cases or implement a proper theory function
-  return [`${root}4`]; // Fallback to just root note
+// --- Normalization Helper ---
+const FLATS_TO_SHARPS: Record<string, string> = {
+  'Bb': 'A#',
+  'Eb': 'D#',
+  'Ab': 'G#',
+  'Db': 'C#',
+  'Gb': 'F#',
+};
+
+const normalizeNoteName = (note: string): string => {
+  return FLATS_TO_SHARPS[note] ?? note; // Return sharp equivalent or original if not flat
+};
+
+// --- Improved Chord Note Calculation ---
+const getChordNotes = (chordName: string, octave = 4): string[] => {
+  if (!chordName || chordName === '?') return [];
+  
+  let rootNote = chordName;
+  let quality: 'major' | 'minor' | 'diminished' = 'major';
+
+  if (chordName.endsWith('dim')) {
+    quality = 'diminished';
+    rootNote = chordName.substring(0, chordName.length - 3);
+  } else if (chordName.endsWith('m')) {
+    quality = 'minor';
+    rootNote = chordName.substring(0, chordName.length - 1);
+  }
+
+  // Normalize the root note before finding index
+  const normalizedRoot = normalizeNoteName(rootNote);
+  const rootIndex = ALL_NOTES.indexOf(normalizedRoot);
+
+  if (rootIndex === -1) {
+    console.warn(`Could not find root note index for: ${rootNote} (normalized: ${normalizedRoot})`);
+    // Return original chord name with octave if lookup fails
+    return [`${rootNote}${octave}`]; 
+  }
+
+  let thirdInterval: number;
+  let fifthInterval: number;
+
+  switch (quality) {
+    case 'minor':
+      thirdInterval = 3;
+      fifthInterval = 7;
+      break;
+    case 'diminished':
+      thirdInterval = 3;
+      fifthInterval = 6;
+      break;
+    case 'major':
+    default:
+      thirdInterval = 4;
+      fifthInterval = 7;
+      break;
+  }
+
+  const thirdIndex = (rootIndex + thirdInterval) % 12;
+  const fifthIndex = (rootIndex + fifthInterval) % 12;
+
+  const rootNoteName = ALL_NOTES[rootIndex];
+  const thirdNoteName = ALL_NOTES[thirdIndex];
+  const fifthNoteName = ALL_NOTES[fifthIndex];
+
+  // Basic octave handling (can be refined later for better voicings)
+  const thirdOctave = thirdIndex < rootIndex ? octave + 1 : octave;
+  const fifthOctave = fifthIndex < rootIndex ? octave + 1 : octave;
+
+  return [
+    `${rootNoteName}${octave}`,
+    `${thirdNoteName}${thirdOctave}`,
+    `${fifthNoteName}${fifthOctave}`,
+  ];
 };
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -179,14 +238,17 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
           return;
       }
 
+      // Dispose old sequence FIRST
+      sequence.current?.dispose();
+
       // Stop current transport & clear events before restart
       Tone.Transport.stop();
       Tone.Transport.cancel();
       synth.current.releaseAll(); 
       setCurrentChordIndex(-1); 
 
-      // Dispose old sequence before creating new one
-      sequence.current?.dispose();
+      // Explicitly reset transport position before creating new sequence
+      Tone.Transport.position = 0;
 
       // Configure Transport BPM
       Tone.Transport.bpm.value = bpm;
@@ -216,17 +278,36 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
       });
 
       // Set playing state BEFORE starting transport
-      setIsPlaying(true); // Directly set state here
+      setIsPlaying(true); 
+      // Add extra releaseAll right before starting transport
+      synth.current?.releaseAll(); 
       Tone.Transport.start("+0.1");
   };
 
   // --- Play/Stop Button Handler ---
   const togglePlayback = async () => {
-    await Tone.start();
-    if (isPlaying) {
-      stopPlayback();
+    // Check if audio context needs starting
+    if (Tone.context.state === 'suspended') {
+      try {
+        await Tone.start();
+        console.log("Audio Context started.");
+        // If context just started, delay sequence start slightly
+        if (isPlaying) {
+          stopPlayback(); 
+        } else {
+           setTimeout(() => startOrRestartSequence(), 10); // 10ms delay
+        }
+      } catch (e) {
+        console.error("Error starting Audio Context:", e);
+        return; // Don't proceed if audio context failed to start
+      }
     } else {
-      startOrRestartSequence();
+       // Audio context already running, proceed immediately
+       if (isPlaying) {
+         stopPlayback();
+       } else {
+         startOrRestartSequence();
+       }
     }
   };
 
@@ -395,8 +476,10 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
                 {numeral}
               </div>
               <button 
-                 className={`px-4 py-2 rounded text-white font-medium transition-colors duration-150 ${
-                    currentChordIndex === index ? 'bg-accent-500 scale-105' : 'bg-primary-500 hover:bg-primary-600'
+                 className={`px-4 py-2 rounded text-white font-medium transition-colors duration-150 bg-primary-500 hover:bg-primary-600 ${
+                    currentChordIndex === index 
+                    ? 'border-4 border-yellow-400'
+                    : 'border-4 border-transparent'
                  }`}
               >
                 {progressionChords[index] ?? ''}
