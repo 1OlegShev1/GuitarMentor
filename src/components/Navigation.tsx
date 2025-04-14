@@ -39,7 +39,7 @@ const Navigation = () => {
           
           {/* Main nav - desktop */}
           <div className="hidden md:flex items-center space-x-1">
-            {navItems.slice(1).map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.path}
                 href={item.path}

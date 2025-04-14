@@ -1,4 +1,8 @@
+"use client";
+
 import Link from 'next/link';
+import Metronome from '@/components/Metronome';
+import GuitarTuner from '@/components/GuitarTuner';
 
 export default function Home() {
   return (
@@ -16,19 +20,51 @@ export default function Home() {
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {features.map((feature) => (
-            <Link key={feature.title} href={feature.href} className="group">
-              <div className="card h-full p-8 transition-all duration-300 hover:shadow-xl group-hover:translate-y-[-4px]">
-                <h2 className="text-2xl font-semibold mb-3 text-secondary-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                  {feature.title}
-                </h2>
-                <p className="text-secondary-600 dark:text-secondary-400 leading-relaxed">
-                  {feature.description}
-                </p>
+        {/* Featured Content Section */}
+        <div className="space-y-12">
+          {/* Embedded Tools Section */}
+          <div>
+            <h2 className="text-3xl font-semibold text-center mb-8 text-secondary-800 dark:text-secondary-200">Essential Tools</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-5xl mx-auto items-start">
+              <div className="card p-6 md:p-8 h-full">
+                <h3 className="text-2xl font-semibold text-center mb-6 text-secondary-800 dark:text-secondary-200">Metronome</h3>
+                <Metronome />
               </div>
-            </Link>
-          ))}
+              <div className="card p-6 md:p-8 h-full">
+                <h3 className="text-2xl font-semibold text-center mb-6 text-secondary-800 dark:text-secondary-200">Guitar Tuner</h3>
+                <GuitarTuner />
+              </div>
+            </div>
+          </div>
+          
+          {/* Learning Section */}
+          <div>
+            <h2 className="text-3xl font-semibold text-center mb-8 text-secondary-800 dark:text-secondary-200">Learning Modules</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+              {/* Fretboard Card */}
+              <Link href="/fretboard" className="group block">
+                <div className="card h-full p-8 transition-all duration-300 hover:shadow-xl group-hover:translate-y-[-4px]">
+                  <h3 className="text-2xl font-semibold mb-3 text-secondary-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                    Fretboard Navigator
+                  </h3>
+                  <p className="text-secondary-600 dark:text-secondary-400 leading-relaxed">
+                    Learn all the notes on the guitar fretboard interactively.
+                  </p>
+                </div>
+              </Link>
+              {/* Scales Card */}
+              <Link href="/scales" className="group block">
+                <div className="card h-full p-8 transition-all duration-300 hover:shadow-xl group-hover:translate-y-[-4px]">
+                  <h3 className="text-2xl font-semibold mb-3 text-secondary-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                    Scale Explorer
+                  </h3>
+                  <p className="text-secondary-600 dark:text-secondary-400 leading-relaxed">
+                    Visualize and practice guitar scales in different positions.
+                  </p>
+                </div>
+              </Link>
+            </div>
+          </div>
         </div>
         
         <div className="text-center pt-8">
@@ -39,42 +75,4 @@ export default function Home() {
       </div>
     </main>
   );
-}
-
-const features = [
-  {
-    title: 'Fretboard Navigator',
-    description: 'Learn all the notes on the guitar fretboard through interactive exercises',
-    href: '/fretboard',
-  },
-  {
-    title: 'Scale Explorer',
-    description: 'Visualize and practice guitar scales in different positions',
-    href: '/scales',
-  },
-  {
-    title: 'CAGED System',
-    description: 'Master the CAGED system to understand chord shapes and positions',
-    href: '/caged',
-  },
-  {
-    title: 'Chord Progressions',
-    description: 'Learn common chord progressions and create your own',
-    href: '/progressions',
-  },
-  {
-    title: 'Ear Training',
-    description: 'Improve your ear for recognizing chords and notes',
-    href: '/ear-training',
-  },
-  {
-    title: 'Jam Assistant',
-    description: 'Get suggestions for extending your chord progressions',
-    href: '/jam-assistant',
-  },
-  {
-    title: 'Guitar Tools',
-    description: 'Use the metronome and guitar tuner to practice with precision',
-    href: '/tools',
-  },
-]; 
+} 
