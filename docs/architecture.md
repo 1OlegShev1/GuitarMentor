@@ -59,12 +59,18 @@ Located in `/app/caged` and using the `CagedSystemDisplay` component, this featu
 
 ### Chord Progressions
 
-Located in `/app/progressions` and using the `ChordProgressions` component, this feature helps users learn and create chord progressions.
+Located in `/app/progressions` and using the `ChordProgressions` component, this feature helps users learn and create chord progressions, and instantly generate any chord voicing via interval formulas.
 
 **Key functionality:**
 - Common chord progression library
 - Chord progression visualization
 - Customizable progressions in various keys
+
+**Implementation details:**
+- Uses `getChordVoicing(chordKey)` from `/src/data/chordVoicings.ts` to compute voicings on demand
+- Parses chord strings (e.g. "F#m7", "Csus4") with `parseChordName()` into root note and quality suffix
+- Defines semitone interval patterns in `CHORD_FORMULAS` for major, minor, 7th, diminished, suspended, etc.
+- Passes the generated `chordVoicing` object to `<FretboardDisplay displayMode="chord" />` for rendering
 
 ### Jam Assistant
 

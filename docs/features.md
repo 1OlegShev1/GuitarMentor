@@ -299,7 +299,7 @@ The CAGED System page helps users understand the five basic chord shapes (C, A, 
 
 ## Chord Progressions
 
-The Chord Progressions feature helps users learn common chord progressions and create their own.
+The Chord Progressions feature helps users learn common chord progressions, create their own, and instantly visualize any chord type using interval formulas.
 
 ### Features:
 
@@ -315,13 +315,16 @@ The Chord Progressions feature helps users learn common chord progressions and c
 
 3. **Fretboard Visualization**
    - See how progressions map to the fretboard
-   - Efficient fingering suggestions
+   - Dynamic fingering generated from chord formulas
    - Highlight common tones between chords
 
 **Technical implementation:**
 - Located in `src/components/ChordProgressions.tsx`
-- Uses music theory algorithms for chord calculations
-- Progressions are stored as patterns that can be applied to any key
+- Uses a formula-based generator (`getChordVoicing(chordKey)`) instead of hard‑coded voicing maps
+- `parseChordName(chordKey)` breaks a chord string (e.g., "F#m7" or "Csus4") into its root and quality suffix
+- Interval patterns for each quality live in `CHORD_FORMULAS` (major, minor, diminished, 7th, suspended, etc.)
+- Chord voicings are computed on demand and passed as the `chordVoicing` prop to `<FretboardDisplay displayMode="chord" />`
+- During playback, the current chord key is fed back into `showChordDiagram` via an auto‑update `useEffect` hook
 
 ## Jam Assistant
 

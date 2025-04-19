@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import * as Tone from 'tone';
 import { ALL_NOTES } from '@/hooks/useFretboard';
 import FretboardDisplay, { ChordVoicingData } from '@/components/FretboardDisplay';
+import { getChordVoicing, parseChordName } from '@/data/chordVoicings';
 
 // Define key-value pairs for available keys
 const KEYS = [
@@ -179,55 +180,6 @@ const getChordNotes = (chordName: string, octave = 4): string[] => {
   ];
 };
 
-// --- Chord Voicings (Basic Open Chords - 0=LOW E, 5=HIGH E) ---
-const getChordVoicing = (chordName: string): ChordVoicingData | null => {
-  console.log(`Lookup voicing for: ${chordName}`);
-  // Positions use 0-based string index (0=Low E, 5=High E)
-  const voicings: Record<string, ChordVoicingData> = {
-     'C': { // Open C Major
-       positions: [
-         // Fretted notes:
-         { string: 1, fret: 3, noteType: 'Root' }, // A string, 3rd fret (C)
-         { string: 2, fret: 2, noteType: '3rd' },  // D string, 2nd fret (E)
-         { string: 4, fret: 1, noteType: 'Root' },  // B string, 1st fret (C)
-         // Open strings G, High E are handled by renderNote logic
-       ],
-       mutedStrings: [1] // Mute Low E (index 0 -> string 1)
-     },
-     'G': { // Open G Major
-       positions: [
-         { string: 0, fret: 3, noteType: 'Root' }, // Low E string, 3rd fret (G)
-         { string: 1, fret: 2, noteType: '3rd' }, // A string, 2nd fret (B)
-         { string: 5, fret: 3, noteType: 'Root' }, // High E string, 3rd fret (G)
-         // Open strings D, G, B handled by renderNote logic
-       ]
-     },
-     'Am': { // Open A minor
-       positions: [
-         { string: 2, fret: 2, noteType: '5th' }, // D string, 2nd fret (E)
-         { string: 3, fret: 2, noteType: 'Root' }, // G string, 2nd fret (A)
-         { string: 4, fret: 1, noteType: 'minor 3rd' }, // B string, 1st fret (C)
-         // Open strings A, High E handled by renderNote logic
-       ],
-       mutedStrings: [1] // Mute Low E
-     },
-     'F': { // F Major Barre Chord
-       positions: [
-         { string: 0, fret: 1, noteType: 'Root' }, // Low E (F)
-         { string: 1, fret: 3, noteType: '5th' }, // A string (C)
-         { string: 2, fret: 3, noteType: 'Root' }, // D string (F)
-         { string: 3, fret: 2, noteType: '3rd' }, // G string (A)
-         { string: 4, fret: 1, noteType: '5th' }, // B string (C)
-         { string: 5, fret: 1, noteType: 'Root' }, // High E (F)
-       ],
-       // Barre definition still uses 1-based indexing for strings
-       barres: [{ fret: 1, startString: 1, endString: 6 }] 
-     },
-     // Add Dm, Em, D, E etc. later
-  };
-  return voicings[chordName] || null;
-};
-
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface ChordProgressionsProps {
   // Add props as needed
@@ -254,39 +206,23 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
 
   // --- Modal State ---
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [displayedChordName, setDisplayedChordName] = useState<string | null>(null);
+  const [displayedChordKey, setDisplayedChordKey] = useState<string | null>(null);
   const [chordVoicing, setChordVoicing] = useState<ChordVoicingData | null>(null);
   const [displayedChordRootNote, setDisplayedChordRootNote] = useState<string | null>(null);
 
   // --- Function to update displayed chord diagram ---
-  const showChordDiagram = (chordIdentifier: string) => {
-    // chordIdentifier is like "A minor", "C Major", "B Diminished"
-    let baseChordName = '';
-    if (chordIdentifier.endsWith(' minor')) {
-        baseChordName = chordIdentifier.split(' ')[0] + 'm'; // "A minor" -> "Am"
-    } else if (chordIdentifier.endsWith(' Diminished')) {
-        baseChordName = chordIdentifier.split(' ')[0] + 'dim'; // "B Diminished" -> "Bdim"
-    } else if (chordIdentifier.endsWith(' Major')) {
-        baseChordName = chordIdentifier.split(' ')[0]; // "C Major" -> "C"
-    } else {
-         baseChordName = chordIdentifier; // Fallback for simple names or potential errors
-         console.warn("Could not reliably parse base chord name from:", chordIdentifier);
-    }
-
-    // const chordNameOnly = chordIdentifier.split(' ')[0]; // OLD INCORRECT LOGIC
-    const rootNoteOnly = baseChordName.replace(/m$|dim$/, ''); // Use baseChordName for root extraction
-    const voicing = getChordVoicing(baseChordName); // Use the reconstructed base name for lookup
-
+  const showChordDiagram = (chordKey: string) => {
+    const voicing = getChordVoicing(chordKey);
     if (voicing) {
-      setDisplayedChordName(chordIdentifier); 
+      const { root: rootNote } = parseChordName(chordKey);
+      setDisplayedChordKey(chordKey);
       setChordVoicing(voicing);
-      setDisplayedChordRootNote(rootNoteOnly); 
+      setDisplayedChordRootNote(rootNote);
     } else {
-      // Clear display if no voicing found for the requested chord
-      setDisplayedChordName(null);
+      setDisplayedChordKey(null);
       setChordVoicing(null);
-      setDisplayedChordRootNote(null); 
-      console.warn(`No voicing found for ${baseChordName}`);
+      setDisplayedChordRootNote(null);
+      console.warn(`No voicing found for ${chordKey}`);
     }
   };
 
@@ -522,18 +458,17 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
   };
 
   // --- Chord Click Handler ---
-  const handleChordClick = (chordIdentifier: string) => {
-    // If clicking the already displayed chord, clear it, otherwise show it.
-    if (displayedChordName === chordIdentifier) {
-        clearChordDisplay();
+  const handleChordClick = (chordKey: string) => {
+    if (displayedChordKey === chordKey) {
+      clearChordDisplay();
     } else {
-        showChordDiagram(chordIdentifier); // Use the extracted function
+      showChordDiagram(chordKey);
     }
   };
 
   // Function to clear chord display
   const clearChordDisplay = () => {
-      setDisplayedChordName(null);
+      setDisplayedChordKey(null);
       setChordVoicing(null);
       setDisplayedChordRootNote(null);
   };
@@ -544,14 +479,12 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
     if (isPlayingRef.current && currentChordIndex >= 0) {
       const chords = progressionChordsRef.current;
       if (chords && chords.length > currentChordIndex) {
-         const currentChordName = chords[currentChordIndex];
-         const currentChordDisplayName = getChordDisplayName(currentChordName);
-         // Update the displayed diagram to match the playing chord
-         showChordDiagram(currentChordDisplayName);
+        const chordKey = chords[currentChordIndex];
+        // Update the displayed diagram to match the playing chord
+        showChordDiagram(chordKey);
       }
     }
-    // We don't need to clear here when index becomes -1, stopPlayback handles it.
-  }, [currentChordIndex]); // Run when the playing chord index changes
+  }, [currentChordIndex]);
 
   return (
     <div className="w-full">
@@ -653,23 +586,23 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
 
         <div className="flex flex-wrap gap-4 items-center mb-4">
           {(isCustom ? customProgression : currentProgressionDetails?.numerals ?? []).map((numeral, index) => {
-            const chordName = progressionChords[index] ?? '';
-            const chordDisplayName = getChordDisplayName(chordName);
+            const chordKey = progressionChords[index] ?? '';
+            const chordDisplay = getChordDisplayName(chordKey);
             return (
               <div key={index} className="flex flex-col items-center gap-1">
                 <div className="px-3 py-1 text-sm rounded border border-secondary-300 dark:border-secondary-600 bg-secondary-50 dark:bg-secondary-700">
                   {numeral}
                 </div>
-                <button 
-                   onClick={() => handleChordClick(chordDisplayName)}
-                   disabled={!chordName || chordName === '?'}
+                <button
+                   onClick={() => handleChordClick(chordKey)}
+                   disabled={!chordKey || chordKey === '?'}
                    className={`px-4 py-2 rounded text-white text-sm font-medium transition-colors duration-150 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed ${
                       currentChordIndex === index 
                       ? 'border-4 border-yellow-400'
                       : 'border-4 border-transparent'
                    }`}
                 >
-                   {chordDisplayName}
+                   {chordDisplay}
                 </button>
               </div>
             );
@@ -682,7 +615,7 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
           <div className="mt-8 p-4 bg-white dark:bg-secondary-800 rounded-xl shadow-md">
               <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xl font-semibold">
-                      {displayedChordName}
+                      {displayedChordKey ? getChordDisplayName(displayedChordKey) : ''}
                   </h3>
                   <button 
                     onClick={clearChordDisplay} 
