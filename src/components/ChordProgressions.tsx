@@ -536,6 +536,9 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
               <div className="text-xs text-secondary-600 dark:text-secondary-400 mt-1">
                 {progression.description.substring(0, 60)}...
               </div>
+              <div className="text-xs text-secondary-700 dark:text-secondary-300 mt-1">
+                Chords: {progression.numerals.map(numeral => KEY_CHORDS[selectedKey][NUMERAL_TO_INDEX[numeral]]).join(', ')}
+              </div>
             </button>
           ))}
           
