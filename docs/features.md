@@ -299,7 +299,7 @@ The CAGED System page helps users understand the five basic chord shapes (C, A, 
 
 ## Chord Progressions
 
-The Chord Progressions feature helps users learn common chord progressions, create their own, and instantly visualize any chord type using interval formulas.
+The Chord Progressions feature helps users learn common chord progressions, create their own, and instantly visualize any chord type using interval formulas, and hear them played back.
 
 ### Features:
 
@@ -318,6 +318,11 @@ The Chord Progressions feature helps users learn common chord progressions, crea
    - Dynamic fingering generated from chord formulas
    - Highlight common tones between chords
 
+4. **Audio Playback**
+   - Play individual chords or entire progressions
+   - Adjustable tempo via BPM slider
+   - Uses Tone.js for chord sequencing and timing control
+
 **Technical implementation:**
 - Located in `src/components/ChordProgressions.tsx`
 - Uses a formula-based generator (`getChordVoicing(chordKey)`) instead of hard‑coded voicing maps
@@ -325,6 +330,7 @@ The Chord Progressions feature helps users learn common chord progressions, crea
 - Interval patterns for each quality live in `CHORD_FORMULAS` (major, minor, diminished, 7th, suspended, etc.)
 - Chord voicings are computed on demand and passed as the `chordVoicing` prop to `<FretboardDisplay displayMode="chord" />`
 - During playback, the current chord key is fed back into `showChordDiagram` via an auto‑update `useEffect` hook
+- Integrates Tone.js: the Play button and BPM control trigger the progression playback scheduler
 
 ## Jam Assistant
 

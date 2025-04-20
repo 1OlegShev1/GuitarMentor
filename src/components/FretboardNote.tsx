@@ -136,6 +136,7 @@ export const FretboardNote: React.FC<FretboardNoteProps> = ({
   
   return (
     <div
+      title={note}
       className={`
         ${baseClasses}
         ${backgroundClasses}

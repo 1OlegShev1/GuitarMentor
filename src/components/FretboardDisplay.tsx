@@ -87,6 +87,7 @@ interface FretboardDisplayProps {
   scaleNotes?: string[];
   rootNote?: string;
   highlightedPattern?: NotePosition[]; // Optional: highlight specific fingerings/patterns
+  intervalLabels?: Record<string, string>;
 
   // Props for CagedSystemDisplay (to be added later)
   cagedShape?: CagedShapeData;
@@ -99,6 +100,7 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
   scaleNotes = [],
   rootNote = null,
   highlightedPattern = [],
+  intervalLabels = {},
   cagedShape = null, // Add cagedShape prop
   chordVoicing = null, // Add chordVoicing prop
   chordRootNote = null, // Destructure the new prop
@@ -493,17 +495,19 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
     // Determine state based on displayMode and practiceMode (only if not already hidden)
     if (state !== 'hidden') {
        if (displayMode === 'scale') {
-         // Check if part of the specifically highlighted pattern FIRST
-         const isHighlighted = highlightedPattern && highlightedPattern.some(p => p.string === position.string && p.fret === position.fret);
-
-         if (isHighlighted) {
-           state = 'pattern_highlight';
-         } else if (!scaleNotes || !scaleNotes.includes(note)) {
+         const isInScale = scaleNotes.includes(note);
+         if (!isInScale) {
            state = 'hidden';
+         } else if (highlightedPattern.some(p => p.string === position.string && p.fret === position.fret)) {
+           state = 'pattern_highlight';
          } else if (rootNote === note) {
-           state = 'root'; // Check root note next
+           state = 'root';
          } else {
-           state = 'pattern_member'; // Otherwise, it's just a regular scale member
+           state = 'pattern_member';
+         }
+         // For any visible scale note (root, pattern_member, pattern_highlight), show interval label
+         if (state !== 'hidden') {
+           noteTextOverride = intervalLabels[note] ?? note;
          }
        } else if (displayMode === 'caged' && cagedShape) {
          const cagedPosition = cagedShape.positions.find(p => p.string === position.string && p.fret === position.fret);
@@ -620,15 +624,12 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
        case 'hidden':
          return null;
        case 'placeholder_clickable':
-         // Pass note to handler even though it's hidden
          return <ClickablePlaceholder onClick={() => handleNoteClick(position)} />;
        case 'caged_finger':
        case 'caged_root':
-         // Use noteTextOverride for CAGED display (now interval or note)
-         return <FretboardNote {...commonProps} note={noteTextOverride ?? note} state={state} />; // Fallback to note if override fails
+         return <FretboardNote {...commonProps} note={noteTextOverride ?? note} state={state} />;
        default:
-         // Render FretboardNote for all other states
-         return <FretboardNote {...commonProps} note={note} state={state} />;
+         return <FretboardNote {...commonProps} note={noteTextOverride ?? note} state={state} />;
     }
   };
 
@@ -814,17 +815,19 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
               // Determine state based on displayMode and practiceMode (only if not already hidden)
               if (state !== 'hidden') { 
                  if (displayMode === 'scale') {
-                   // Check if part of the specifically highlighted pattern FIRST
-                   const isHighlighted = highlightedPattern && highlightedPattern.some(p => p.string === position.string && p.fret === position.fret);
-
-                   if (isHighlighted) {
-                     state = 'pattern_highlight';
-                   } else if (!scaleNotes || !scaleNotes.includes(note)) {
+                   const isInScale = scaleNotes.includes(note);
+                   if (!isInScale) {
                      state = 'hidden';
+                   } else if (highlightedPattern.some(p => p.string === position.string && p.fret === position.fret)) {
+                     state = 'pattern_highlight';
                    } else if (rootNote === note) {
-                     state = 'root'; // Check root note next
+                     state = 'root';
                    } else {
-                     state = 'pattern_member'; // Otherwise, it's just a regular scale member
+                     state = 'pattern_member';
+                   }
+                   // For any visible scale note (root, pattern_member, pattern_highlight), show interval label
+                   if (state !== 'hidden') {
+                     noteTextOverride = intervalLabels[note] ?? note;
                    }
                  } else if (displayMode === 'caged' && cagedShape) {
                    const cagedPosition = cagedShape.positions.find(p => p.string === position.string && p.fret === position.fret);
@@ -941,15 +944,12 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
                  case 'hidden':
                    return null;
                  case 'placeholder_clickable':
-                   // Pass note to handler even though it's hidden
                    return <ClickablePlaceholder onClick={() => handleNoteClick(position)} />;
                  case 'caged_finger':
                  case 'caged_root':
-                   // Use noteTextOverride for CAGED display (now interval or note)
-                   return <FretboardNote {...commonProps} note={noteTextOverride ?? note} state={state} />; // Fallback to note if override fails
+                   return <FretboardNote {...commonProps} note={noteTextOverride ?? note} state={state} />;
                  default:
-                   // Render FretboardNote for all other states
-                   return <FretboardNote {...commonProps} note={note} state={state} />;
+                   return <FretboardNote {...commonProps} note={noteTextOverride ?? note} state={state} />;
               }
             }}
           />

@@ -91,143 +91,44 @@ type ScalePositionsMap = {
   [key in ScaleType]?: ScalePositionDef[];
 };
 
-const SCALE_POSITIONS: ScalePositionsMap = {
-  minorPentatonic: [
-    {
-      name: 'Position 1 (Root 6th Str)',
-      rootStringIndex: 0,
-      relativeFrets: [[0, 3], [0, 2], [0, 2], [0, 2], [0, 3], [0, 3]],
-    },
-    {
-      name: 'Position 2 (Root 4th Str)',
-      rootStringIndex: 2,
-      relativeFrets: [[0, 2], [0, 2], [-1, 2], [-1, 2], [0, 3], [0, 2]],
-    },
-    {
-      name: 'Position 3 (Root 5th Str)',
-      rootStringIndex: 1,
-      relativeFrets: [[0, 2], [0, 2], [-1, 2], [-1, 2], [0, 2], [0, 2]],
-    },
-    {
-      name: 'Position 4 (Root 3rd Str)',
-      rootStringIndex: 3,
-      relativeFrets: [[0, 3], [0, 2], [0, 2], [-1, 2], [0, 3], [0, 3]],
-    },
-    {
-      name: 'Position 5 (Root 2nd Str)',
-      rootStringIndex: 4,
-      relativeFrets: [[0, 2], [0, 3], [0, 2], [0, 2], [-1, 2], [0, 2]],
-    },
-  ],
-  major: [
-    {
-      name: 'Position 1 (E Shape)',
-      rootStringIndex: 0, 
-      relativeFrets: [[0, 2, 4], [0, 2, 4], [1, 2, 4], [1, 2, 4], [2, 4, 5], [2, 4, 5]]
-    },
-    {
-      name: 'Position 2 (D Shape)',
-      rootStringIndex: 2,
-      relativeFrets: [[-2, 0, 2], [-2, 0, 2], [0, 2, 3], [0, 2, 4], [0, 2, 3], [-2, 0, 2]]
-    },
-    {
-      name: 'Position 3 (C Shape)',
-      rootStringIndex: 4,
-      relativeFrets: [[-1, 0, 2], [-1, 0, 2], [-1, 0, 2], [-1, 0, 2], [0, 2, 3], [0, 2, 3]]
-    },
-    {
-      name: 'Position 4 (A Shape)',
-      rootStringIndex: 1,
-      relativeFrets: [[0, 2, 3], [0, 2, 4], [0, 2, 4], [1, 2, 4], [1, 3, 4], [1, 3, 4]]
-    },
-    {
-      name: 'Position 5 (G Shape)',
-      rootStringIndex: 3,
-      relativeFrets: [[0, 2, 4], [1, 2, 4], [1, 2, 4], [1, 3, 4], [2, 4, 5], [2, 4]]
+/**
+ * Generate scale boxes dynamically: for each root on strings 6-2, find frets for scale intervals within a small window
+ */
+function generateScalePositions(scaleIntervals: number[], rootNote: string) {
+  const rootMidi = ALL_NOTES.indexOf(rootNote);
+  if (rootMidi === -1) return [];
+  const positions = [];
+  // For string 0 (low E) through 4 (B)
+  for (let rootStringIndex = 0; rootStringIndex <= 4; rootStringIndex++) {
+    // find root fret on this string
+    const openMidi = ALL_NOTES.indexOf(STANDARD_TUNING[rootStringIndex]);
+    let rootFret = -1;
+    for (let fret = 0; fret <= 15; fret++) {
+      if ((openMidi + fret) % 12 === rootMidi) { rootFret = fret; break; }
     }
-  ],
-  minor: [
-    {
-      name: 'Position 1 (Em Shape)',
-      rootStringIndex: 0,
-      relativeFrets: [[0, 2, 3], [0, 2, 3], [0, 2, 4], [0, 2, 4], [1, 2, 4], [1, 3, 4]]
-    },
-    {
-      name: 'Position 2 (Dm Shape)',
-      rootStringIndex: 2,
-      relativeFrets: [[0, 1, 3], [0, 1, 3], [0, 2, 3], [0, 2, 4], [0, 2], [1, 3]]
-    },
-    {
-      name: 'Position 3 (Cm Shape)',
-      rootStringIndex: 4,
-      relativeFrets: [[-2, 0, 1], [-2, 0, 1], [-2, 0, 2], [-1, 0, 2], [-1, 0, 2], [-2, 0]]
-    },
-    {
-      name: 'Position 4 (Am Shape)',
-      rootStringIndex: 1,
-      relativeFrets: [[0, 2, 3], [0, 2, 3], [0, 2, 4], [0, 2], [1, 3], [0, 2]]
-    },
-    {
-      name: 'Position 5 (Gm Shape)',
-      rootStringIndex: 3,
-      relativeFrets: [[0, 1, 3], [0, 2, 3], [0, 2, 3], [0, 2], [1, 3], [0, 1]]
+    if (rootFret === -1) continue;
+    // collect relative frets for window
+    const relativeFrets: number[][] = Array.from({ length: 6 }, () => []);
+    const span = 4;
+    for (let stringIdx = 0; stringIdx < 6; stringIdx++) {
+      const stringOpen = ALL_NOTES.indexOf(STANDARD_TUNING[stringIdx]);
+      for (const interval of scaleIntervals) {
+        // try offsets in window
+        for (let offset = -1; offset <= span; offset++) {
+          const f = rootFret + offset;
+          if (f < 0 || f > 24) continue;
+          if ((stringOpen + f) % 12 === (rootMidi + interval) % 12) {
+            relativeFrets[stringIdx].push(offset);
+            break;
+          }
+        }
+      }
+      relativeFrets[stringIdx] = Array.from(new Set(relativeFrets[stringIdx])).sort((a,b) => a-b);
     }
-  ],
-  blues: [
-    {
-      name: 'Position 1',
-      rootStringIndex: 0, 
-      relativeFrets: [[0, 3], [0, 2], [0, 2], [0, 1, 2], [0, 3], [0, 3]] 
-    },
-    {
-      name: 'Position 2',
-      rootStringIndex: 2, 
-      relativeFrets: [[0, 2], [0, 2], [-1, 2], [-1, 0, 2], [0, 3], [0, 2]]
-    },
-    {
-      name: 'Position 3',
-      rootStringIndex: 1,
-      relativeFrets: [[0, 2], [0, 2], [-1, 1, 2], [-1, 2], [0, 2], [0, 2]]
-    },
-    {
-      name: 'Position 4',
-      rootStringIndex: 3, 
-      relativeFrets: [[0, 3], [0, 2], [0, 2], [-1, 2], [-1, 1, 2], [0, 3]]
-    },
-    {
-      name: 'Position 5',
-      rootStringIndex: 4,
-      relativeFrets: [[0, 2], [0, 3], [0, 2], [0, 2], [-1, 2], [0, 1, 2]]
-    }
-  ],
-  majorPentatonic: [
-    {
-      name: 'Position 1',
-      rootStringIndex: 0,
-      relativeFrets: [[0, 2], [0, 2], [-1, 1], [-1, 1], [0, 2], [0, 2]]
-    },
-    {
-      name: 'Position 2',
-      rootStringIndex: 1,
-      relativeFrets: [[-3, -1], [0, 2], [-1, 1], [-1, 1], [0, 2], [0, 2]]
-    },
-    {
-      name: 'Position 3',
-      rootStringIndex: 2,
-      relativeFrets: [[-2, 0], [-3, -1], [0, 2], [-1, 1], [0, 2], [-3, -1]]
-    },
-    {
-      name: 'Position 4',
-      rootStringIndex: 3,
-      relativeFrets: [[-2, 0], [-1, 1], [-1, 1], [-2, 0], [0, 2], [-2, 0]]
-    },
-    {
-      name: 'Position 5',
-      rootStringIndex: 4,
-      relativeFrets: [[-2, 0], [-1, 1], [-1, 1], [-2, 0], [-2, 0], [-1, 1]]
-    }
-  ],
-};
+    positions.push({ name: `Position ${positions.length+1}`, rootStringIndex, relativeFrets });
+  }
+  return positions;
+}
 
 // --- Helper to generate a basic pattern rooted on 6th string ---
 // (Simplified: Returns a small box including notes from the scale intervals)
@@ -285,6 +186,8 @@ const ScaleExplorer: React.FC = () => {
   const [rootNote, setRootNote] = useState<string>('A');
   const [scaleType, setScaleType] = useState<ScaleType>('minorPentatonic');
   const [selectedPositionIndex, setSelectedPositionIndex] = useState<number>(0);
+  // Toggle between showing note names (default) and interval labels
+  const [showIntervals, setShowIntervals] = useState<boolean>(false);
 
   // Calculate the notes in the selected scale
   const currentScaleNotes = React.useMemo(() => {
@@ -296,85 +199,57 @@ const ScaleExplorer: React.FC = () => {
     });
   }, [rootNote, scaleType]);
 
-  // Get available positions for the current scale type (ONLY explicitly defined ones)
+  // Generate dynamic box positions for the current root and scale
   const availablePositions = React.useMemo(() => {
-    // Return only positions defined in the constant
-    return SCALE_POSITIONS[scaleType]?.filter(p => p.relativeFrets) || []; 
-  }, [scaleType]);
+    return generateScalePositions(SCALE_TYPES[scaleType].intervals, rootNote);
+  }, [scaleType, rootNote]);
 
-  // Calculate the NotePosition[] for the highlighted pattern
+  // Calculate the highlighted pattern for the selected box
   const highlightedPattern = React.useMemo((): NotePosition[] => {
-    const explicitPositions = SCALE_POSITIONS[scaleType]?.filter(p => p.relativeFrets) || [];
-
-    // Case 1: Explicit positions exist AND a specific one is selected
-    if (explicitPositions.length > 0 && selectedPositionIndex > 0) {
-      const positionDef = explicitPositions[selectedPositionIndex - 1];
-      if (!positionDef) return []; // Safety check
-
-      const { rootStringIndex, relativeFrets } = positionDef;
-      const rootNoteMidi = ALL_NOTES.indexOf(rootNote);
-      if (rootNoteMidi === -1) return [];
-
-      let rootFret = -1;
-      const openStringMidi = ALL_NOTES.indexOf(STANDARD_TUNING[rootStringIndex]);
-      for (let fret = 0; fret < 15; fret++) {
-          if ((openStringMidi + fret) % 12 === rootNoteMidi) {
-              rootFret = fret;
-              break;
-          }
-      }
-      if (rootFret === -1) {
-          console.warn(`Could not find root note ${rootNote} on string ${rootStringIndex} for position ${positionDef.name}`);
-          return [];
-      }
-
-      const patternNotes: NotePosition[] = [];
-      relativeFrets.forEach((fretsOnString, stringIdx) => {
-        fretsOnString.forEach(relativeFret => {
-          const absoluteFret = rootFret + relativeFret;
-          if (absoluteFret >= 0 && absoluteFret <= 24) { 
-              patternNotes.push({ string: stringIdx, fret: absoluteFret });
-          }
-        });
-      });
-      return patternNotes;
-    } 
-    // Case 2: NO explicit positions defined for this scale type
-    else if (explicitPositions.length === 0 && scaleType !== 'wholeTone') {
-       // Automatically generate and return the Root on 6th fallback pattern
-       const fallbackPatternDef = generateRootOn6thPattern(SCALE_TYPES[scaleType].intervals, rootNote);
-       if (!fallbackPatternDef) return []; // Could not generate fallback
-
-       // Need to calculate absolute frets for the fallback
-       const { rootStringIndex, relativeFrets } = fallbackPatternDef;
-       const rootNoteMidi = ALL_NOTES.indexOf(rootNote);
-       if (rootNoteMidi === -1) return [];
-       let rootFret = -1;
-       const openStringMidi = ALL_NOTES.indexOf(STANDARD_TUNING[rootStringIndex]);
-       for (let fret = 0; fret < 15; fret++) {
-           if ((openStringMidi + fret) % 12 === rootNoteMidi) {
-               rootFret = fret;
-               break;
-           }
-       }
-       if (rootFret === -1) return [];
-       
-       const patternNotes: NotePosition[] = [];
-       relativeFrets.forEach((fretsOnString, stringIdx) => {
-          fretsOnString.forEach(relativeFret => {
-            const absoluteFret = rootFret + relativeFret;
-            if (absoluteFret >= 0 && absoluteFret <= 24) { 
-                patternNotes.push({ string: stringIdx, fret: absoluteFret });
-            }
-          });
-       });
-       return patternNotes;
+    const defs = availablePositions;
+    const def = defs[selectedPositionIndex - 1];
+    if (!def) return [];
+    // find root fret again
+    const openMidi = ALL_NOTES.indexOf(STANDARD_TUNING[def.rootStringIndex]);
+    const rootMidi = ALL_NOTES.indexOf(rootNote);
+    let rootFret = -1;
+    for (let f = 0; f <= 15; f++) {
+      if ((openMidi + f) % 12 === rootMidi) { rootFret = f; break; }
     }
-    
-    // Case 3: "All Positions" selected or other cases
-    return []; // Return empty array to show all scale notes without specific highlighting
+    if (rootFret === -1) return [];
+    // map relative offsets to absolute NotePositions
+    return def.relativeFrets.flatMap((fretsOnString, stringIdx) => 
+      fretsOnString.map(offset => ({ string: stringIdx, fret: rootFret + offset }))
+    );
+  }, [availablePositions, selectedPositionIndex, rootNote]);
 
-  }, [rootNote, scaleType, selectedPositionIndex, availablePositions]); // Include scaleType here
+  // Compute interval labels (1, b2, 2, b3, 3, 4, b5, 5, b6, 6, b7, 7)
+  const intervalLabels = React.useMemo(() => {
+    const labels: Record<string, string> = {};
+    const intervals = SCALE_TYPES[scaleType].intervals;
+    for (let i = 0; i < intervals.length; i++) {
+      const interval = intervals[i];
+      const note = currentScaleNotes[i];
+      let label = '';
+      switch (interval) {
+        case 0: label = '1'; break;
+        case 1: label = 'b2'; break;
+        case 2: label = '2'; break;
+        case 3: label = 'b3'; break;
+        case 4: label = '3'; break;
+        case 5: label = '4'; break;
+        case 6: label = 'b5'; break;
+        case 7: label = '5'; break;
+        case 8: label = 'b6'; break;
+        case 9: label = '6'; break;
+        case 10: label = 'b7'; break;
+        case 11: label = '7'; break;
+        default: label = interval.toString();
+      }
+      labels[note] = label;
+    }
+    return labels;
+  }, [scaleType, currentScaleNotes]);
 
   return (
     <div className="w-full flex flex-col md:flex-row gap-8">
@@ -430,6 +305,20 @@ const ScaleExplorer: React.FC = () => {
           </div>
         )}
 
+        {/* Toggle for note vs interval view */}
+        <div className="mt-4 flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="showIntervals"
+            checked={showIntervals}
+            onChange={(e) => setShowIntervals(e.target.checked)}
+            className="form-checkbox h-4 w-4 text-blue-600 rounded"
+          />
+          <label htmlFor="showIntervals" className="text-sm text-gray-700 dark:text-gray-300">
+            Show interval labels
+          </label>
+        </div>
+
         <div className="text-sm">
           <p className="font-semibold">{SCALE_TYPES[scaleType].name} Scale</p>
           <p>Notes: {currentScaleNotes.join(', ')}</p>
@@ -444,6 +333,7 @@ const ScaleExplorer: React.FC = () => {
           rootNote={rootNote}
           scaleNotes={currentScaleNotes}
           highlightedPattern={highlightedPattern}
+          intervalLabels={showIntervals ? intervalLabels : {}}
         />
       </div>
     </div>
