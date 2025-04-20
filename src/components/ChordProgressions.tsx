@@ -207,6 +207,7 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
   // --- Modal State ---
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [displayedChordKey, setDisplayedChordKey] = useState<string | null>(null);
+  const [displayedChordIndex, setDisplayedChordIndex] = useState<number | null>(null);
   const [chordVoicing, setChordVoicing] = useState<ChordVoicingData | null>(null);
   const [displayedChordRootNote, setDisplayedChordRootNote] = useState<string | null>(null);
 
@@ -458,11 +459,12 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
   };
 
   // --- Chord Click Handler ---
-  const handleChordClick = (chordKey: string) => {
-    if (displayedChordKey === chordKey) {
+  const handleChordClick = (chordKey: string, idx: number) => {
+    if (displayedChordIndex === idx) {
       clearChordDisplay();
     } else {
       showChordDiagram(chordKey);
+      setDisplayedChordIndex(idx);
     }
   };
 
@@ -471,6 +473,7 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
       setDisplayedChordKey(null);
       setChordVoicing(null);
       setDisplayedChordRootNote(null);
+      setDisplayedChordIndex(null);
   };
 
   // --- Auto-update Chord Diagram during Playback ---
@@ -594,12 +597,12 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
                   {numeral}
                 </div>
                 <button
-                   onClick={() => handleChordClick(chordKey)}
+                   onClick={() => handleChordClick(chordKey, index)}
                    disabled={!chordKey || chordKey === '?'}
                    className={`px-4 py-2 rounded text-white text-sm font-medium transition-colors duration-150 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed ${
-                      currentChordIndex === index 
-                      ? 'border-4 border-yellow-400'
-                      : 'border-4 border-transparent'
+                      (displayedChordIndex === index || currentChordIndex === index)
+                        ? 'border-4 border-yellow-400'
+                        : 'border-4 border-transparent'
                    }`}
                 >
                    {chordDisplay}
@@ -630,6 +633,7 @@ const ChordProgressions: React.FC<ChordProgressionsProps> = () => {
                      displayMode="chord" 
                      chordVoicing={chordVoicing}
                      chordRootNote={displayedChordRootNote}
+                     ensureVisiblePositions={chordVoicing.positions}
                  /> 
               </div>
           </div>

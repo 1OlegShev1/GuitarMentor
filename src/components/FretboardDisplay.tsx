@@ -93,6 +93,8 @@ interface FretboardDisplayProps {
   cagedShape?: CagedShapeData;
   chordVoicing?: ChordVoicingData; // Add prop for chord voicing data
   chordRootNote?: string | null; // ADDED: Root note for the displayed chord
+  // Ensure these positions' frets are visible by adjusting scroll
+  ensureVisiblePositions?: NotePosition[];
 }
 
 const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
@@ -104,6 +106,7 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
   cagedShape = null, // Add cagedShape prop
   chordVoicing = null, // Add chordVoicing prop
   chordRootNote = null, // Destructure the new prop
+  ensureVisiblePositions,
 }) => {
   const [showNaturalOnly, setShowNaturalOnly] = useState(false);
   const [crossHighlightNote, setCrossHighlightNote] = useState<string | null>(null);
@@ -632,6 +635,23 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
          return <FretboardNote {...commonProps} note={noteTextOverride ?? note} state={state} />;
     }
   };
+
+  // When parent requests certain positions be fully visible, adjust the scroll
+  React.useEffect(() => {
+    if (ensureVisiblePositions && ensureVisiblePositions.length > 0) {
+      const frets = ensureVisiblePositions.map(p => p.fret);
+      const minFret = Math.min(...frets);
+      const maxFret = Math.max(...frets);
+      // Adjust startFret to include full range
+      const minStart = Math.max(0, Math.min(startFret, minFret));
+      let newStart = startFret;
+      if (minFret < startFret) newStart = minFret;
+      else if (maxFret > startFret + VISIBLE_FRET_COUNT - 1) newStart = maxFret - (VISIBLE_FRET_COUNT - 1);
+      if (newStart !== startFret) {
+        setStartFret(newStart);
+      }
+    }
+  }, [ensureVisiblePositions, startFret]);
 
   return (
     <div className="relative p-4 pb-16 bg-white dark:bg-gray-800 rounded-lg shadow">
