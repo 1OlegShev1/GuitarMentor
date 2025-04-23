@@ -95,6 +95,8 @@ interface FretboardDisplayProps {
   chordRootNote?: string | null; // ADDED: Root note for the displayed chord
   // Ensure these positions' frets are visible by adjusting scroll
   ensureVisiblePositions?: NotePosition[];
+  // Toggle to show intervals instead of note names for CAGED shapes
+  cagedShowIntervals?: boolean;
 }
 
 const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
@@ -107,6 +109,7 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
   chordVoicing = null, // Add chordVoicing prop
   chordRootNote = null, // Destructure the new prop
   ensureVisiblePositions,
+  cagedShowIntervals = false,
 }) => {
   const [showNaturalOnly, setShowNaturalOnly] = useState(false);
   const [crossHighlightNote, setCrossHighlightNote] = useState<string | null>(null);
@@ -517,17 +520,27 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
          if (!cagedPosition) {
            state = 'hidden';
          } else {
-           // noteTextOverride = cagedPosition.finger > 0 ? String(cagedPosition.finger) : 'O'; // OLD: Show finger
-           // NEW: Show interval (R, 3, 5) or note name
-           switch (cagedPosition.noteType) {
-               case 'Root': noteTextOverride = 'R'; break;
-               case '3rd': noteTextOverride = '3'; break;
-               case '5th': noteTextOverride = '5'; break;
-               // Add other intervals if defined, or use the type directly if it's simple
-               // default: noteTextOverride = cagedPosition.noteType ? String(cagedPosition.noteType) : note; // Fallback to noteType string or actual note
-               default: noteTextOverride = note; // Fallback to actual note name if noteType is undefined or not R/3/5
+           if (cagedShowIntervals) {
+             // Calculate interval relative to the ACTUAL rootNote prop
+             const rootNoteIndex = rootNote ? ALL_NOTES.indexOf(rootNote) : -1;
+             if (rootNoteIndex !== -1) {
+               const interval = (noteIndex - rootNoteIndex + 12) % 12;
+               switch (interval) {
+                 case 0: noteTextOverride = 'R'; break; // Root
+                 case 4: noteTextOverride = '3'; break; // Major 3rd
+                 case 7: noteTextOverride = '5'; break; // Perfect 5th
+                 // Add cases for other intervals if needed for other CAGED contexts?
+                 default: noteTextOverride = note; // Fallback for other intervals
+               }
+             } else {
+               noteTextOverride = note; // Fallback if rootNote is invalid
+             }
+           } else {
+             // Show actual note names
+             noteTextOverride = note;
            }
-           state = cagedPosition.noteType === 'Root' ? 'caged_root' : 'caged_finger'; // Keep state for styling root differently
+           // Color based on the ACTUAL note vs the selected rootNote prop
+           state = note === rootNote ? 'caged_root' : 'caged_finger';
          }
        } else if (displayMode === 'chord' && chordVoicing) {
            const voicingPosition = chordVoicing.positions.find(p => 
@@ -854,17 +867,27 @@ const FretboardDisplay: React.FC<FretboardDisplayProps> = ({
                    if (!cagedPosition) {
                      state = 'hidden';
                    } else {
-                     // noteTextOverride = cagedPosition.finger > 0 ? String(cagedPosition.finger) : 'O'; // OLD: Show finger
-                     // NEW: Show interval (R, 3, 5) or note name
-                     switch (cagedPosition.noteType) {
-                         case 'Root': noteTextOverride = 'R'; break;
-                         case '3rd': noteTextOverride = '3'; break;
-                         case '5th': noteTextOverride = '5'; break;
-                         // Add other intervals if defined, or use the type directly if it's simple
-                         // default: noteTextOverride = cagedPosition.noteType ? String(cagedPosition.noteType) : note; // Fallback to noteType string or actual note
-                         default: noteTextOverride = note; // Fallback to actual note name if noteType is undefined or not R/3/5
+                     if (cagedShowIntervals) {
+                       // Calculate interval relative to the ACTUAL rootNote prop
+                       const rootNoteIndex = rootNote ? ALL_NOTES.indexOf(rootNote) : -1;
+                       if (rootNoteIndex !== -1) {
+                         const interval = (noteIndex - rootNoteIndex + 12) % 12;
+                         switch (interval) {
+                           case 0: noteTextOverride = 'R'; break; // Root
+                           case 4: noteTextOverride = '3'; break; // Major 3rd
+                           case 7: noteTextOverride = '5'; break; // Perfect 5th
+                           // Add cases for other intervals if needed for other CAGED contexts?
+                           default: noteTextOverride = note; // Fallback for other intervals
+                         }
+                       } else {
+                         noteTextOverride = note; // Fallback if rootNote is invalid
+                       }
+                     } else {
+                       // Show actual note names
+                       noteTextOverride = note;
                      }
-                     state = cagedPosition.noteType === 'Root' ? 'caged_root' : 'caged_finger'; // Keep state for styling root differently
+                     // Color based on the ACTUAL note vs the selected rootNote prop
+                     state = note === rootNote ? 'caged_root' : 'caged_finger';
                    }
                  } else if (displayMode === 'chord' && chordVoicing) {
                      const voicingPosition = chordVoicing.positions.find(p => 

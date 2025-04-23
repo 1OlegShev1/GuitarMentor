@@ -108,6 +108,7 @@ interface CagedSystemDisplayProps {
 const CagedSystemDisplay: React.FC<CagedSystemDisplayProps> = () => {
   const [selectedShapeKey, setSelectedShapeKey] = useState<ChordKey>('C');
   const [selectedRootNote, setSelectedRootNote] = useState<string>('C');
+  const [showIntervals, setShowIntervals] = useState(false);
 
   const handleShapeChange = (shape: ChordKey) => {
     setSelectedShapeKey(shape);
@@ -194,29 +195,29 @@ const CagedSystemDisplay: React.FC<CagedSystemDisplayProps> = () => {
   return (
     <div className="w-full">
       {/* Controls */}
-      <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row justify-start items-start sm:items-baseline gap-6 mb-6">
         {/* Root Note Selector */}
-        <div>
-          <label htmlFor="cagedRootNoteSelect" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Root Note</label>
+        <div className="flex flex-col sm:flex-row items-start sm:items-baseline space-y-1 sm:space-y-0 sm:space-x-2">
+          <label htmlFor="cagedRootNoteSelect" className="text-sm font-medium text-gray-700 dark:text-gray-300">Root Note</label>
           <select
             id="cagedRootNoteSelect"
             value={selectedRootNote}
             onChange={(e) => setSelectedRootNote(e.target.value)}
-            className="w-full p-2 rounded border bg-white dark:bg-secondary-800 dark:border-secondary-700"
+            className="w-24 p-2 rounded border border-gray-300 bg-white text-gray-800 dark:bg-secondary-800 dark:border-secondary-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             {ALL_NOTES.map(note => <option key={note} value={note}>{note}</option>)}
           </select>
         </div>
         
         {/* Shape Selector */}
-        <div className="flex space-x-2 bg-gray-100 dark:bg-secondary-800 p-1 rounded-lg">
+        <div className="flex space-x-2 bg-gray-50 dark:bg-secondary-800 p-1 rounded-lg">
           {CHORD_KEYS.map((key) => (
             <button
               key={key}
               onClick={() => handleShapeChange(key)}
-              className={`px-5 py-2 rounded-md font-medium text-sm transition-colors duration-200 ${
+              className={`px-4 py-2 rounded-md font-medium text-sm transition-colors duration-200 ${
                 selectedShapeKey === key
-                  ? 'bg-primary text-gray-900 dark:text-white shadow' 
+                  ? 'bg-white border border-primary-500 text-primary-600 shadow-sm'
                   : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-secondary-700'
               }`}
             >
@@ -226,12 +227,29 @@ const CagedSystemDisplay: React.FC<CagedSystemDisplayProps> = () => {
         </div>
       </div>
 
+      {/* Interval / Note Toggle */}
+      <div className="flex items-center space-x-2 mb-4">
+        <input
+          id="cagedShowIntervals"
+          type="checkbox"
+          checked={showIntervals}
+          onChange={(e) => setShowIntervals(e.target.checked)}
+          className="form-checkbox h-4 w-4 text-primary-600" 
+        />
+        <label htmlFor="cagedShowIntervals" className="text-sm text-gray-700 dark:text-gray-300">
+          Show intervals
+        </label>
+      </div>
+
       {/* Fretboard Display or Message */}
       <div className="w-full max-w-4xl mx-auto"> 
         {currentCagedShape ? (
            <FretboardDisplay
              displayMode="caged"
              cagedShape={currentCagedShape}
+             rootNote={selectedRootNote}
+             ensureVisiblePositions={currentCagedShape.positions}
+             cagedShowIntervals={showIntervals}
            />
          ) : (
             <div className="text-center p-8 bg-gray-100 dark:bg-secondary-800 rounded-lg shadow">

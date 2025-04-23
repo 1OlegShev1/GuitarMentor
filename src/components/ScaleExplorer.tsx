@@ -315,7 +315,7 @@ const ScaleExplorer: React.FC = () => {
             className="form-checkbox h-4 w-4 text-blue-600 rounded"
           />
           <label htmlFor="showIntervals" className="text-sm text-gray-700 dark:text-gray-300">
-            Show interval labels
+            Show intervals
           </label>
         </div>
 
@@ -334,6 +334,7 @@ const ScaleExplorer: React.FC = () => {
           scaleNotes={currentScaleNotes}
           highlightedPattern={highlightedPattern}
           intervalLabels={showIntervals ? intervalLabels : {}}
+          ensureVisiblePositions={highlightedPattern}
         />
       </div>
     </div>
