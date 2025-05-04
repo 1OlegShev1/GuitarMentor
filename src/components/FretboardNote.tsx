@@ -35,7 +35,7 @@ export interface FretboardNoteProps {
 }
 
 // Refactor the component logic later based on the 'state' prop
-export const FretboardNote: React.FC<FretboardNoteProps> = ({
+export const FretboardNote: React.FC<FretboardNoteProps> = React.memo(({
   note,              // Actual note (A#) or finger (1, 2, O)
   state,             // The driving visual state
   position,
@@ -153,4 +153,4 @@ export const FretboardNote: React.FC<FretboardNoteProps> = ({
       {displayContent}
     </div>
   );
-}; 
+}); 

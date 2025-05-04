@@ -4,7 +4,7 @@ interface FretboardMarkerProps {
   fret: number;
 }
 
-export const FretboardMarker: React.FC<FretboardMarkerProps> = ({ fret }) => {
+export const FretboardMarker: React.FC<FretboardMarkerProps> = React.memo(({ fret }) => {
   // Single dots at traditional positions
   if ([3, 5, 7, 9, 15, 17, 19, 21].includes(fret)) {
     return (
@@ -23,4 +23,4 @@ export const FretboardMarker: React.FC<FretboardMarkerProps> = ({ fret }) => {
   }
 
   return null;
-}; 
+}); 
