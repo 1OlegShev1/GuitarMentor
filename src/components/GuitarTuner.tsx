@@ -605,7 +605,8 @@ const GuitarTuner: React.FC = () => {
               style={{ 
                 WebkitAppearance: "none", 
                 MozAppearance: "none", 
-                appearance: "none"
+                appearance: "none",
+                backgroundImage: "none"
               }}
               disabled={isListening}
             >
