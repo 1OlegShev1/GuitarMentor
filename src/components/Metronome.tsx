@@ -439,9 +439,9 @@ const Metronome: React.FC<MetronomeProps> = ({ initialTempo = 120 }) => {
   };
 
   return (
-    <div className="p-6 bg-white dark:bg-secondary-800 shadow-md rounded-lg">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-secondary-900 dark:text-white">Metronome</h2>
+    <div>
+      {/* Removed inner card wrapper and title to avoid double styling */}
+      <div className="flex justify-end items-center mb-4">
         <div className="flex items-center">
           <button
             onClick={saveSettings}

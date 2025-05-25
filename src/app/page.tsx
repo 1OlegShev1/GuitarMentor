@@ -20,9 +20,8 @@ export default function Home() {
           </p>
         </div>
         
-        {/* Featured Content Section */}
+        {/* Essential Tools Section */}
         <div className="space-y-12">
-          {/* Embedded Tools Section */}
           <div>
             <h2 className="text-3xl font-semibold text-center mb-8 text-secondary-800 dark:text-secondary-200">Essential Tools</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-5xl mx-auto items-start">

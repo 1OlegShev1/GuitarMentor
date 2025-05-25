@@ -559,8 +559,8 @@ const GuitarTuner: React.FC = () => {
   };
   
   return (
-    <div className="card p-6 bg-white dark:bg-secondary-800 shadow-md rounded-lg">
-      <h2 className="text-xl font-bold mb-4">Guitar Tuner</h2>
+    <div>
+      {/* Removed inner card wrapper and title to avoid double styling */}
       
       {/* Error message */}
       {errorMessage && (
